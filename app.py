@@ -9,7 +9,7 @@ import numpy as np
 # CONFIGURAÇÃO DA PÁGINA
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="Dashboard CBMAM - Março",
+    page_title="CBMAM — SEGs por OBM",
     page_icon="🚒",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -32,13 +32,13 @@ st.markdown("""
             text-align: center;
             margin-bottom: 10px;
         }
-        .destaque-marco {
-            background: linear-gradient(135deg, #cc0000, #ff6b6b);
+        .badge-marco {
+            background: linear-gradient(135deg, #cc0000, #ff4444);
             color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 10px 20px;
+            border-radius: 8px;
             text-align: center;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: bold;
             margin-bottom: 15px;
         }
@@ -46,13 +46,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# CARREGAMENTO DO CSV
+# CARREGAMENTO
 # ─────────────────────────────────────────────
 URL_CSV = "https://raw.githubusercontent.com/AllanCardosoDev/seg/main/relatorio.csv"
 
 @st.cache_data
 def carregar_csv():
-    for enc in ["utf-8", "latin-1", "utf-8-sig"]:
+    for enc in ["utf-8", "utf-8-sig", "latin-1"]:
         try:
             df = pd.read_csv(URL_CSV, encoding=enc, sep=None, engine="python")
             df.columns = df.columns.astype(str).str.strip()
@@ -61,125 +61,126 @@ def carregar_csv():
             return df
         except Exception:
             continue
-    st.error("Não foi possível carregar o arquivo relatorio.csv")
+    st.error("Não foi possível carregar relatorio.csv")
     st.stop()
 
-with st.spinner("Carregando relatorio.csv..."):
+with st.spinner("Carregando dados..."):
     df_raw = carregar_csv()
 
 # ─────────────────────────────────────────────
-# DETECTA COLUNAS AUTOMATICAMENTE
+# DETECTA COLUNAS
 # ─────────────────────────────────────────────
 colunas     = df_raw.columns.tolist()
 colunas_num = df_raw.select_dtypes(include=np.number).columns.tolist()
 colunas_txt = df_raw.select_dtypes(exclude=np.number).columns.tolist()
 
-# Detecta coluna de MÊS
-candidatos_mes   = ["MES", "MÊS", "Mes", "Mês", "mes", "mês", "MONTH", "month", "Mês/Ano", "MES/ANO"]
-col_mes_auto     = next((c for c in candidatos_mes if c in colunas), None)
+# OBM
+cand_obm   = ["OBM", "obm", "UNIDADE", "unidade", "LOCAL", "local", "OM", "om", "POSTO", "posto"]
+col_obm    = next((c for c in cand_obm if c in colunas), colunas_txt[0] if colunas_txt else colunas[0])
 
-# Detecta coluna de LOCAL
-candidatos_local = ["OBM", "LOCAL", "UNIDADE", "POSTO", "NOME", "obm", "local", "unidade", "OM", "om"]
-col_local_auto   = next((c for c in candidatos_local if c in colunas),
-                        colunas_txt[0] if colunas_txt else colunas[0])
+# SEGs
+cand_segs  = ["SEGS", "segs", "SEG", "seg", "HORAS", "horas", "TOTAL", "total", "QTD", "qtd"]
+col_segs   = next((c for c in cand_segs if c in colunas), colunas_num[0] if colunas_num else colunas[-1])
 
-# Detecta coluna de VALOR
-candidatos_valor = ["SEGS", "HORAS", "TOTAL", "SEG", "segs", "horas", "total", "seg", "Segs", "Horas"]
-col_valor_auto   = next((c for c in candidatos_valor if c in colunas),
-                        colunas_num[0] if colunas_num else colunas[-1])
+# MÊS
+cand_mes   = ["MES", "mes", "MÊS", "mês", "MONTH", "month", "MES_ANO", "REFERENCIA"]
+col_mes    = next((c for c in cand_mes if c in colunas), None)
+tem_mes    = col_mes is not None
+
+# ─────────────────────────────────────────────
+# PREPARA LISTA DE MESES E DETECTA MARÇO
+# ─────────────────────────────────────────────
+if tem_mes:
+    df_raw[col_mes]  = df_raw[col_mes].astype(str).str.strip()
+    meses_lista      = sorted(df_raw[col_mes].dropna().unique().tolist())
+    # Encontra março automaticamente
+    marco_val        = next(
+        (m for m in meses_lista if "mar" in m.lower() or m.strip() in ["3", "03"]),
+        meses_lista[0] if meses_lista else None
+    )
+else:
+    meses_lista = []
+    marco_val   = None
 
 # ─────────────────────────────────────────────
 # SIDEBAR
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🚒 CBMAM")
-    st.markdown("### Dashboard de SEGs")
+    st.markdown("### SEGs por OBM")
     st.markdown("---")
 
-    # ── MAPEAMENTO DE COLUNAS ─────────────────
-    st.markdown("**⚙️ Mapeamento de Colunas**")
-
-    col_local = st.selectbox(
-        "📍 Coluna de Local/OBM:",
-        options=colunas,
-        index=colunas.index(col_local_auto) if col_local_auto in colunas else 0
+    # ── MAPEAMENTO ────────────────────────────
+    st.markdown("**⚙️ Colunas**")
+    col_obm = st.selectbox(
+        "📍 OBM/Unidade:",
+        colunas,
+        index=colunas.index(col_obm) if col_obm in colunas else 0
     )
-
-    col_valor = st.selectbox(
-        "⏱️ Coluna de SEGs/Horas:",
-        options=colunas,
-        index=colunas.index(col_valor_auto) if col_valor_auto in colunas else 0
+    col_segs = st.selectbox(
+        "⏱️ SEGs:",
+        colunas,
+        index=colunas.index(col_segs) if col_segs in colunas else 0
     )
-
     opcoes_mes = ["(Nenhuma)"] + colunas
-    col_mes = st.selectbox(
-        "📅 Coluna de Mês:",
-        options=opcoes_mes,
-        index=opcoes_mes.index(col_mes_auto) if col_mes_auto in opcoes_mes else 0
+    col_mes_sel = st.selectbox(
+        "📅 Mês:",
+        opcoes_mes,
+        index=opcoes_mes.index(col_mes) if col_mes in opcoes_mes else 0
     )
-    tem_mes = col_mes != "(Nenhuma)" and col_mes in df_raw.columns
+    tem_mes  = col_mes_sel != "(Nenhuma)"
+    col_mes  = col_mes_sel if tem_mes else None
 
     st.markdown("---")
 
     # ── FILTRO POR MÊS ────────────────────────
     if tem_mes:
-        meses_raw        = df_raw[col_mes].dropna().unique().tolist()
-        meses_disponiveis = sorted([str(m) for m in meses_raw])
-
-        # Detecta qual valor representa março
-        marco_opcoes = [m for m in meses_disponiveis
-                        if "mar" in str(m).lower() or "03" in str(m) or "3" == str(m).strip()]
-        marco_default = marco_opcoes[0] if marco_opcoes else (
-            meses_disponiveis[0] if meses_disponiveis else None
+        df_raw[col_mes] = df_raw[col_mes].astype(str).str.strip()
+        meses_lista     = sorted(df_raw[col_mes].dropna().unique().tolist())
+        marco_val       = next(
+            (m for m in meses_lista if "mar" in m.lower() or m.strip() in ["3","03"]),
+            meses_lista[0] if meses_lista else None
         )
 
         st.markdown("**📅 Filtro por Mês**")
         modo_mes = st.radio(
-            "Modo de seleção:",
+            "Modo:",
             ["📄 Mês específico", "📚 Múltiplos meses", "🗂️ Todos os meses"],
             index=0
         )
 
         if modo_mes == "📄 Mês específico":
-            idx_marco = meses_disponiveis.index(marco_default) if marco_default in meses_disponiveis else 0
-            mes_escolhido = st.selectbox(
-                "Selecione o mês:",
-                options=meses_disponiveis,
-                index=idx_marco   # março já vem pré-selecionado
-            )
-            meses_ativos = [mes_escolhido]
+            idx_default = meses_lista.index(marco_val) if marco_val in meses_lista else 0
+            mes_unico   = st.selectbox("Mês:", meses_lista, index=idx_default)
+            meses_ativos = [mes_unico]
 
         elif modo_mes == "📚 Múltiplos meses":
-            meses_ativos = st.multiselect(
-                "Selecione os meses:",
-                options=meses_disponiveis,
-                default=[marco_default] if marco_default else meses_disponiveis[:1]
-            )
+            default_multi = [marco_val] if marco_val else meses_lista[:1]
+            meses_ativos  = st.multiselect("Meses:", meses_lista, default=default_multi)
             if not meses_ativos:
-                meses_ativos = meses_disponiveis
+                meses_ativos = meses_lista
 
         else:
-            meses_ativos = meses_disponiveis
-            st.info(f"✅ {len(meses_disponiveis)} meses selecionados")
+            meses_ativos = meses_lista
+            st.info(f"✅ {len(meses_lista)} meses")
 
     else:
         meses_ativos = []
-        st.info("Coluna de mês não identificada. Todos os dados serão exibidos.")
 
     st.markdown("---")
 
-    # ── OUTROS FILTROS ────────────────────────
-    st.markdown("**🔍 Filtrar por Local**")
-    filtro_local = st.text_input("Buscar OBM/Local:")
+    # ── FILTRO OBM ────────────────────────────
+    st.markdown("**🔍 Filtrar OBM**")
+    filtro_obm = st.text_input("Buscar:")
 
     st.markdown("---")
-    top_n = st.slider("🏆 Top N no ranking", 3, 30, 10)
+    top_n = st.slider("🏆 Top N OBMs", 3, 30, 10)
 
     st.markdown("---")
-    st.markdown("**📁 Fonte dos dados**")
+    st.markdown("**📁 Fonte**")
     st.markdown("[github.com/AllanCardosoDev/seg](https://github.com/AllanCardosoDev/seg)")
 
-    with st.expander("📋 Ver colunas do CSV"):
+    with st.expander("📋 Colunas do CSV"):
         for c in colunas:
             st.markdown(f"- `{c}`")
 
@@ -187,79 +188,68 @@ with st.sidebar:
 # APLICA FILTROS
 # ─────────────────────────────────────────────
 df = df_raw.copy()
-df[col_mes]   = df[col_mes].astype(str) if tem_mes else df.get(col_mes, "")
-df[col_valor] = pd.to_numeric(df[col_valor], errors="coerce")
-df            = df.dropna(subset=[col_valor])
-df            = df[df[col_valor] > 0]
+df[col_segs] = pd.to_numeric(df[col_segs], errors="coerce")
+df = df.dropna(subset=[col_segs])
+df = df[df[col_segs] > 0]
 
-# Filtro por mês
 if tem_mes and meses_ativos:
     df = df[df[col_mes].isin(meses_ativos)]
 
-# Filtro por local
-if filtro_local:
-    df = df[df[col_local].astype(str).str.contains(filtro_local, case=False, na=False)]
+if filtro_obm:
+    df = df[df[col_obm].astype(str).str.contains(filtro_obm, case=False, na=False)]
 
-# Dados exclusivos de março (para comparativos)
-df_marco = df_raw.copy()
-df_marco[col_valor] = pd.to_numeric(df_marco[col_valor], errors="coerce")
-df_marco = df_marco.dropna(subset=[col_valor])
-df_marco = df_marco[df_marco[col_valor] > 0]
-if tem_mes and marco_default:
-    df_marco = df_marco[df_marco[col_mes].astype(str) == str(marco_default)]
+# DataFrame exclusivo de março
+if tem_mes and marco_val:
+    df_marco = df_raw.copy()
+    df_marco[col_segs] = pd.to_numeric(df_marco[col_segs], errors="coerce")
+    df_marco = df_marco.dropna(subset=[col_segs])
+    df_marco = df_marco[df_marco[col_segs] > 0]
+    df_marco = df_marco[df_marco[col_mes].astype(str) == marco_val]
+else:
+    df_marco = df.copy()
 
 # ─────────────────────────────────────────────
 # CABEÇALHO
 # ─────────────────────────────────────────────
-st.markdown('<div class="titulo">🚒 CBMAM — Dashboard de SEGs</div>', unsafe_allow_html=True)
+st.markdown('<div class="titulo">🚒 CBMAM — Quantidade de SEGs por OBM</div>', unsafe_allow_html=True)
 
 if tem_mes and len(meses_ativos) == 1:
-    eh_marco = "mar" in meses_ativos[0].lower() or meses_ativos[0] == marco_default
-    if eh_marco:
+    is_marco = marco_val and meses_ativos[0] == marco_val
+    if is_marco:
         st.markdown(
-            '<div class="destaque-marco">📅 FOCO: MARÇO — Análise principal do mês de referência</div>',
+            '<div class="badge-marco">📅 MARÇO — Mês de referência principal</div>',
             unsafe_allow_html=True
         )
     else:
-        st.markdown(f'<div class="subtitulo">📅 Mês selecionado: {meses_ativos[0]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="subtitulo">📅 {meses_ativos[0]}</div>', unsafe_allow_html=True)
 elif tem_mes:
-    st.markdown(
-        f'<div class="subtitulo">📅 Meses: {", ".join(meses_ativos)}</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown(f'<div class="subtitulo">📅 {", ".join(meses_ativos)}</div>', unsafe_allow_html=True)
 else:
     st.markdown('<div class="subtitulo">📅 Todos os registros</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
-# ─────────────────────────────────────────────
-# VALIDA
-# ─────────────────────────────────────────────
 if df.empty:
-    st.error("⚠️ Nenhum dado encontrado com os filtros aplicados. Ajuste as configurações na sidebar.")
+    st.error("Nenhum dado encontrado. Ajuste os filtros na sidebar.")
     st.stop()
 
 # ─────────────────────────────────────────────
-# KPIs — destaque para março
+# KPIs
 # ─────────────────────────────────────────────
-total_segs    = int(df[col_valor].sum())
-media_segs    = round(df[col_valor].mean(), 1)
-total_locais  = df[col_local].nunique()
-total_linhas  = len(df)
-rank_geral    = df.groupby(col_local)[col_valor].sum()
-local_lider   = rank_geral.idxmax()
-valor_lider   = int(rank_geral.max())
-
-# KPIs de março para comparação
-total_marco   = int(df_marco[col_valor].sum()) if not df_marco.empty else 0
-locais_marco  = df_marco[col_local].nunique() if not df_marco.empty else 0
+total_segs   = int(df[col_segs].sum())
+media_segs   = round(df[col_segs].mean(), 1)
+total_obms   = df[col_obm].nunique()
+rank_geral   = df.groupby(col_obm)[col_segs].sum()
+obm_lider    = rank_geral.idxmax()
+val_lider    = int(rank_geral.max())
+total_marco  = int(df_marco[col_segs].sum()) if not df_marco.empty else 0
 
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("⏱️ Total SEGs",     f"{total_segs:,}".replace(",", "."))
-c2.metric("📅 SEGs em Março",  f"{total_marco:,}".replace(",", "."))
-c3.metric("📍 Locais Únicos",  total_locais)
-c4.metric("📊 Média por Reg.", f"{media_segs:.1f}")
-c5.metric("🏆 Líder",          local_lider)
+c1.metric("⏱️ Total SEGs",        f"{total_segs:,}".replace(",", "."))
+c2.metric("📅 SEGs em Março",     f"{total_marco:,}".replace(",", "."))
+c3.metric("🏢 OBMs",              total_obms)
+c4.metric("📊 Média por Registro",f"{media_segs:.1f}")
+c5.metric("🥇 OBM Líder",         obm_lider)
 
 st.markdown("---")
 
@@ -267,7 +257,7 @@ st.markdown("---")
 # ABAS
 # ─────────────────────────────────────────────
 aba1, aba2, aba3, aba4, aba5 = st.tabs([
-    "🏆 Ranking — Quem mais precisou de SEGs",
+    "🏆 Ranking de OBMs",
     "📅 Março em Destaque",
     "📊 Comparativo por Mês",
     "🔥 Análise Detalhada",
@@ -275,90 +265,91 @@ aba1, aba2, aba3, aba4, aba5 = st.tabs([
 ])
 
 # ══════════════════════════════════════════════
-# ABA 1 — RANKING GERAL
+# ABA 1 — RANKING DE OBMs
 # ══════════════════════════════════════════════
 with aba1:
-    st.subheader(f"🏆 Top {top_n} — Locais que mais precisaram de SEGs")
+    st.subheader(f"🏆 Top {top_n} OBMs — Maior quantidade de SEGs")
 
     df_rank = (
-        df.groupby(col_local)[col_valor]
+        df.groupby(col_obm)[col_segs]
         .sum()
         .reset_index()
-        .rename(columns={col_local: "Local", col_valor: "Total"})
-        .sort_values("Total", ascending=False)
+        .rename(columns={col_obm: "OBM", col_segs: "Total SEGs"})
+        .sort_values("Total SEGs", ascending=False)
         .reset_index(drop=True)
     )
-    df_rank.index        += 1
-    df_rank["% do Total"] = (df_rank["Total"] / df_rank["Total"].sum() * 100).round(1)
-    top_rank              = df_rank.head(top_n)
+    df_rank.index += 1
+    df_rank["% do Total"] = (df_rank["Total SEGs"] / df_rank["Total SEGs"].sum() * 100).round(1)
+    top_rank = df_rank.head(top_n)
 
     col_g1, col_g2 = st.columns([3, 2])
 
     with col_g1:
         fig_bar = px.bar(
-            top_rank.sort_values("Total"),
-            x="Total", y="Local",
+            top_rank.sort_values("Total SEGs"),
+            x="Total SEGs", y="OBM",
             orientation="h",
-            color="Total",
+            color="Total SEGs",
             color_continuous_scale="Reds",
-            text="Total",
-            title=f"Top {top_n} — Total de SEGs por Local"
+            text="Total SEGs",
+            title=f"Top {top_n} OBMs — Total de SEGs"
         )
         fig_bar.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
         fig_bar.update_layout(
-            height=460,
+            height=480,
             plot_bgcolor="rgba(0,0,0,0)",
             coloraxis_showscale=False,
-            yaxis_title="", xaxis_title="SEGs"
+            yaxis_title="", xaxis_title="Quantidade de SEGs"
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
     with col_g2:
         fig_pie = px.pie(
             top_rank,
-            names="Local", values="Total",
+            names="OBM", values="Total SEGs",
             hole=0.4,
-            title=f"Distribuição % — Top {top_n}",
+            title=f"Distribuição % — Top {top_n} OBMs",
             color_discrete_sequence=px.colors.sequential.Reds_r
         )
         fig_pie.update_traces(textinfo="percent+label")
-        fig_pie.update_layout(height=460, showlegend=False)
+        fig_pie.update_layout(height=480, showlegend=False)
         st.plotly_chart(fig_pie, use_container_width=True)
 
-    # Treemap
     st.markdown("---")
+
+    # Treemap
     fig_tree = px.treemap(
         df_rank.head(20),
-        path=["Local"], values="Total",
-        color="Total",
+        path=["OBM"], values="Total SEGs",
+        color="Total SEGs",
         color_continuous_scale="Reds",
-        title="Treemap — Proporção de SEGs por Local (Top 20)"
+        title="Treemap — Proporção de SEGs por OBM (Top 20)"
     )
     fig_tree.update_layout(height=380)
     st.plotly_chart(fig_tree, use_container_width=True)
 
-    # Funil
     st.markdown("---")
+
+    # Funil
     fig_funil = go.Figure(go.Funnel(
-        y=top_rank["Local"],
-        x=top_rank["Total"],
+        y=top_rank["OBM"],
+        x=top_rank["Total SEGs"],
         textinfo="value+percent initial",
         marker=dict(color=px.colors.sequential.Reds_r[:len(top_rank)])
     ))
-    fig_funil.update_layout(title=f"Funil de Demanda — Top {top_n}", height=400)
+    fig_funil.update_layout(title=f"Funil de Demanda — Top {top_n} OBMs", height=420)
     st.plotly_chart(fig_funil, use_container_width=True)
 
-    # Tabela completa
     st.markdown("---")
-    st.subheader("📋 Ranking Completo")
-    df_exib_rank = df_rank.copy()
-    df_exib_rank["Total"]      = df_exib_rank["Total"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
-    df_exib_rank["% do Total"] = df_exib_rank["% do Total"].astype(str) + "%"
-    st.dataframe(df_exib_rank, use_container_width=True, height=350)
+    st.subheader("📋 Ranking Completo por OBM")
+    df_rank_exib = df_rank.copy()
+    df_rank_exib["Total SEGs"]  = df_rank_exib["Total SEGs"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+    df_rank_exib["% do Total"]  = df_rank_exib["% do Total"].astype(str) + "%"
+    st.dataframe(df_rank_exib, use_container_width=True, height=380)
 
     st.success(
-        f"🥇 **{local_lider}** foi o local com mais SEGs: "
-        f"**{valor_lider:,}** ({df_rank[df_rank['Local'] == local_lider]['% do Total'].values[0]}% do total)"
+        f"🥇 **{obm_lider}** registrou a maior quantidade de SEGs: "
+        f"**{val_lider:,}** ({df_rank[df_rank['OBM'] == obm_lider]['% do Total'].values[0]}% do total)"
         .replace(",", ".")
     )
 
@@ -367,110 +358,107 @@ with aba1:
 # ══════════════════════════════════════════════
 with aba2:
     st.markdown(
-        '<div class="destaque-marco">📅 MARÇO — Análise detalhada do mês de referência</div>',
+        '<div class="badge-marco">📅 MARÇO — Análise detalhada do mês de referência</div>',
         unsafe_allow_html=True
     )
 
     if df_marco.empty:
-        st.warning("Nenhum dado encontrado para março. Verifique a coluna de mês na sidebar.")
+        st.warning("Nenhum dado de março encontrado. Verifique a coluna de mês na sidebar.")
     else:
-        # KPIs de março
-        total_m   = int(df_marco[col_valor].sum())
-        media_m   = round(df_marco[col_valor].mean(), 1)
-        locais_m  = df_marco[col_local].nunique()
-        rank_m    = df_marco.groupby(col_local)[col_valor].sum()
-        lider_m   = rank_m.idxmax()
-        val_lider = int(rank_m.max())
+        total_m  = int(df_marco[col_segs].sum())
+        media_m  = round(df_marco[col_segs].mean(), 1)
+        obms_m   = df_marco[col_obm].nunique()
+        rank_m   = df_marco.groupby(col_obm)[col_segs].sum()
+        lider_m  = rank_m.idxmax()
+        val_m    = int(rank_m.max())
 
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("⏱️ Total SEGs em Março", f"{total_m:,}".replace(",", "."))
-        k2.metric("📊 Média por Registro",  f"{media_m:.1f}")
-        k3.metric("📍 Locais Atendidos",    locais_m)
-        k4.metric("🥇 Maior Demandante",    lider_m)
+        k1.metric("⏱️ Total SEGs — Março",   f"{total_m:,}".replace(",", "."))
+        k2.metric("📊 Média por Registro",    f"{media_m:.1f}")
+        k3.metric("🏢 OBMs com SEGs",         obms_m)
+        k4.metric("🥇 OBM com Mais SEGs",     lider_m)
 
         st.markdown("---")
 
-        # Ranking de março
         df_rank_m = (
-            df_marco.groupby(col_local)[col_valor]
+            df_marco.groupby(col_obm)[col_segs]
             .sum()
             .reset_index()
-            .rename(columns={col_local: "Local", col_valor: "Total"})
-            .sort_values("Total", ascending=False)
+            .rename(columns={col_obm: "OBM", col_segs: "Total SEGs"})
+            .sort_values("Total SEGs", ascending=False)
             .reset_index(drop=True)
         )
         df_rank_m.index += 1
-        df_rank_m["% do Mês"] = (df_rank_m["Total"] / df_rank_m["Total"].sum() * 100).round(1)
+        df_rank_m["% do Mês"] = (df_rank_m["Total SEGs"] / df_rank_m["Total SEGs"].sum() * 100).round(1)
 
         col_m1, col_m2 = st.columns([3, 2])
 
         with col_m1:
-            st.subheader(f"🏆 Top {top_n} em Março")
+            st.subheader(f"🏆 Top {top_n} OBMs em Março")
             fig_bar_m = px.bar(
-                df_rank_m.head(top_n).sort_values("Total"),
-                x="Total", y="Local",
+                df_rank_m.head(top_n).sort_values("Total SEGs"),
+                x="Total SEGs", y="OBM",
                 orientation="h",
-                color="Total",
+                color="Total SEGs",
                 color_continuous_scale="Reds",
-                text="Total",
-                title="Ranking de SEGs — Março"
+                text="Total SEGs",
+                title="Ranking de SEGs por OBM — Março"
             )
             fig_bar_m.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
             fig_bar_m.update_layout(
-                height=420,
+                height=440,
                 plot_bgcolor="rgba(0,0,0,0)",
-                coloraxis_showscale=False
+                coloraxis_showscale=False,
+                yaxis_title="", xaxis_title="SEGs"
             )
             st.plotly_chart(fig_bar_m, use_container_width=True)
 
         with col_m2:
             st.subheader("📋 Tabela — Março")
             df_tab_m = df_rank_m.copy()
-            df_tab_m["Total"]    = df_tab_m["Total"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
-            df_tab_m["% do Mês"] = df_tab_m["% do Mês"].astype(str) + "%"
-            st.dataframe(df_tab_m, use_container_width=True, height=420)
+            df_tab_m["Total SEGs"] = df_tab_m["Total SEGs"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+            df_tab_m["% do Mês"]   = df_tab_m["% do Mês"].astype(str) + "%"
+            st.dataframe(df_tab_m, use_container_width=True, height=440)
 
         st.markdown("---")
 
-        # Treemap março
         fig_tree_m = px.treemap(
             df_rank_m,
-            path=["Local"], values="Total",
-            color="Total",
+            path=["OBM"], values="Total SEGs",
+            color="Total SEGs",
             color_continuous_scale="Reds",
-            title="Treemap de SEGs — Março"
+            title="Treemap de SEGs por OBM — Março"
         )
         fig_tree_m.update_layout(height=380)
         st.plotly_chart(fig_tree_m, use_container_width=True)
 
-        # Comparação março vs total geral (se houver outros meses)
-        if tem_mes and len(meses_disponiveis) > 1:
+        # Março vs demais meses
+        if tem_mes and len(meses_lista) > 1:
             st.markdown("---")
             st.subheader("📊 Março vs Demais Meses")
 
-            df_full_val = df_raw.copy()
-            df_full_val[col_valor] = pd.to_numeric(df_full_val[col_valor], errors="coerce")
-            df_full_val = df_full_val.dropna(subset=[col_valor])
-            df_full_val = df_full_val[df_full_val[col_valor] > 0]
-            df_full_val[col_mes] = df_full_val[col_mes].astype(str)
+            df_todos = df_raw.copy()
+            df_todos[col_segs] = pd.to_numeric(df_todos[col_segs], errors="coerce")
+            df_todos = df_todos.dropna(subset=[col_segs])
+            df_todos = df_todos[df_todos[col_segs] > 0]
 
-            total_por_mes = (
-                df_full_val.groupby(col_mes)[col_valor]
+            totais_mes = (
+                df_todos.groupby(col_mes)[col_segs]
                 .sum().reset_index()
-                .rename(columns={col_mes: "Mês", col_valor: "Total"})
-                .sort_values("Total", ascending=False)
+                .rename(columns={col_mes: "Mês", col_segs: "Total SEGs"})
+                .sort_values("Total SEGs", ascending=False)
             )
-            total_por_mes["Destaque"] = total_por_mes["Mês"].apply(
-                lambda x: "🔴 Março" if "mar" in x.lower() or x == str(marco_default) else "Outros meses"
+            totais_mes["Destaque"] = totais_mes["Mês"].apply(
+                lambda x: "🔴 Março" if x == marco_val else "Outros meses"
             )
 
             fig_comp = px.bar(
-                total_por_mes,
-                x="Mês", y="Total",
+                totais_mes,
+                x="Mês", y="Total SEGs",
                 color="Destaque",
                 color_discrete_map={"🔴 Março": "#cc0000", "Outros meses": "#aaaaaa"},
-                text="Total",
-                title="Comparativo de SEGs entre Meses (Março em destaque)"
+                text="Total SEGs",
+                title="SEGs por Mês — Março em destaque"
             )
             fig_comp.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
             fig_comp.update_layout(
@@ -481,8 +469,8 @@ with aba2:
             st.plotly_chart(fig_comp, use_container_width=True)
 
         st.success(
-            f"🥇 Em março, **{lider_m}** foi o local com maior demanda de SEGs: "
-            f"**{val_lider:,}** ({df_rank_m[df_rank_m['Local'] == lider_m]['% do Mês'].values[0]}% do mês)"
+            f"🥇 Em março, **{lider_m}** foi a OBM com maior quantidade de SEGs: "
+            f"**{val_m:,}** ({df_rank_m[df_rank_m['OBM'] == lider_m]['% do Mês'].values[0]}% do mês)"
             .replace(",", ".")
         )
 
@@ -490,54 +478,51 @@ with aba2:
 # ABA 3 — COMPARATIVO POR MÊS
 # ══════════════════════════════════════════════
 with aba3:
-    st.subheader("📅 Comparativo entre Meses")
+    st.subheader("📅 Comparativo de SEGs entre Meses")
 
     if not tem_mes:
         st.info("Configure a coluna de mês na sidebar para habilitar esta análise.")
     else:
-        df_full = df_raw.copy()
-        df_full[col_valor] = pd.to_numeric(df_full[col_valor], errors="coerce")
-        df_full = df_full.dropna(subset=[col_valor])
-        df_full = df_full[df_full[col_valor] > 0]
-        df_full[col_mes] = df_full[col_mes].astype(str)
-
-        if filtro_local:
-            df_full = df_full[df_full[col_local].astype(str).str.contains(filtro_local, case=False, na=False)]
+        df_todos = df_raw.copy()
+        df_todos[col_segs] = pd.to_numeric(df_todos[col_segs], errors="coerce")
+        df_todos = df_todos.dropna(subset=[col_segs])
+        df_todos = df_todos[df_todos[col_segs] > 0]
+        if filtro_obm:
+            df_todos = df_todos[df_todos[col_obm].astype(str).str.contains(filtro_obm, case=False, na=False)]
 
         # Total por mês
-        df_por_mes = (
-            df_full.groupby(col_mes)[col_valor]
+        totais = (
+            df_todos.groupby(col_mes)[col_segs]
             .sum().reset_index()
-            .rename(columns={col_mes: "Mês", col_valor: "Total"})
-            .sort_values("Total", ascending=False)
+            .rename(columns={col_mes: "Mês", col_segs: "Total SEGs"})
+            .sort_values("Total SEGs", ascending=False)
         )
-        df_por_mes["Destaque"] = df_por_mes["Mês"].apply(
-            lambda x: "🔴 Março" if "mar" in x.lower() else "Outros"
+        totais["Destaque"] = totais["Mês"].apply(
+            lambda x: "🔴 Março" if x == marco_val else "Outros"
         )
 
         fig_mes = px.bar(
-            df_por_mes,
-            x="Mês", y="Total",
+            totais,
+            x="Mês", y="Total SEGs",
             color="Destaque",
             color_discrete_map={"🔴 Março": "#cc0000", "Outros": "#888888"},
-            text="Total",
+            text="Total SEGs",
             title="Total de SEGs por Mês"
         )
         fig_mes.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
         fig_mes.update_layout(
-            height=380, plot_bgcolor="rgba(0,0,0,0)",
-            xaxis_tickangle=-30, showlegend=True
+            height=380,
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_tickangle=-30
         )
         st.plotly_chart(fig_mes, use_container_width=True)
 
         st.markdown("---")
+        st.subheader(f"🌡️ Heatmap — Top {top_n} OBMs × Meses")
 
-        # Heatmap local × mês
-        st.subheader(f"🌡️ Heatmap — Top {top_n} Locais × Meses")
-
-        pivot = df_full.pivot_table(
-            index=col_local, columns=col_mes,
-            values=col_valor, aggfunc="sum", fill_value=0
+        pivot = df_todos.pivot_table(
+            index=col_obm, columns=col_mes,
+            values=col_segs, aggfunc="sum", fill_value=0
         )
         pivot["_total"] = pivot.sum(axis=1)
         pivot = pivot.nlargest(top_n, "_total").drop(columns="_total")
@@ -546,54 +531,52 @@ with aba3:
             pivot,
             color_continuous_scale="Reds",
             aspect="auto",
-            title=f"Heatmap SEGs — Top {top_n} Locais × Meses",
+            title=f"Heatmap SEGs — Top {top_n} OBMs × Meses",
             text_auto=True
         )
-        fig_heat.update_layout(height=max(350, top_n * 38))
+        fig_heat.update_layout(height=max(380, top_n * 40))
         st.plotly_chart(fig_heat, use_container_width=True)
 
         st.markdown("---")
+        st.subheader(f"📈 Evolução Mensal — Top {top_n} OBMs")
 
-        # Evolução dos top locais
-        st.subheader(f"📈 Evolução Mensal — Top {top_n} Locais")
-
-        top_locais = df_full.groupby(col_local)[col_valor].sum().nlargest(top_n).index.tolist()
-        df_evol = (
-            df_full[df_full[col_local].isin(top_locais)]
-            .groupby([col_mes, col_local])[col_valor]
+        top_obms = df_todos.groupby(col_obm)[col_segs].sum().nlargest(top_n).index.tolist()
+        df_evol  = (
+            df_todos[df_todos[col_obm].isin(top_obms)]
+            .groupby([col_mes, col_obm])[col_segs]
             .sum().reset_index()
-            .rename(columns={col_mes: "Mês", col_local: "Local", col_valor: "SEGs"})
+            .rename(columns={col_mes: "Mês", col_obm: "OBM", col_segs: "SEGs"})
         )
 
         fig_line = px.line(
             df_evol,
-            x="Mês", y="SEGs", color="Local",
+            x="Mês", y="SEGs", color="OBM",
             markers=True,
-            title=f"Evolução Mensal — Top {top_n} Locais"
+            title=f"Evolução Mensal — Top {top_n} OBMs"
         )
-        fig_line.update_layout(height=430, plot_bgcolor="rgba(0,0,0,0)")
+        fig_line.update_layout(height=440, plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_line, use_container_width=True)
 
 # ══════════════════════════════════════════════
 # ABA 4 — ANÁLISE DETALHADA
 # ══════════════════════════════════════════════
 with aba4:
-    st.subheader("🔥 Estatísticas por Local")
+    st.subheader("🔥 Estatísticas de SEGs por OBM")
 
     df_stats = (
-        df.groupby(col_local)[col_valor]
+        df.groupby(col_obm)[col_segs]
         .agg(["sum", "mean", "max", "min", "count"])
         .reset_index()
         .rename(columns={
-            col_local: "Local",
-            "sum": "Total", "mean": "Média",
-            "max": "Máximo", "min": "Mínimo",
+            col_obm: "OBM",
+            "sum": "Total SEGs", "mean": "Média",
+            "max": "Máximo",    "min": "Mínimo",
             "count": "Registros"
         })
-        .sort_values("Total", ascending=False)
+        .sort_values("Total SEGs", ascending=False)
         .round(2)
     )
-    st.dataframe(df_stats, use_container_width=True, height=360)
+    st.dataframe(df_stats, use_container_width=True, height=380)
 
     st.markdown("---")
 
@@ -601,42 +584,41 @@ with aba4:
 
     with col_d1:
         fig_hist = px.histogram(
-            df, x=col_valor, nbins=30,
+            df, x=col_segs, nbins=30,
             color_discrete_sequence=["#cc0000"],
-            title=f"Histograma — {col_valor}"
+            title="Histograma — Distribuição de SEGs"
         )
         fig_hist.update_layout(height=340, plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_hist, use_container_width=True)
 
     with col_d2:
-        df_dist = (
-            df.groupby(col_local)[col_valor]
+        df_pie = (
+            df.groupby(col_obm)[col_segs]
             .sum().reset_index()
-            .rename(columns={col_local: "Local", col_valor: "Total"})
-            .sort_values("Total", ascending=False)
+            .sort_values(col_segs, ascending=False)
         )
         fig_pie2 = px.pie(
-            df_dist.head(12),
-            names="Local", values="Total",
+            df_pie.head(12),
+            names=col_obm, values=col_segs,
             hole=0.4,
             color_discrete_sequence=px.colors.sequential.Reds_r,
-            title="Distribuição % por Local (Top 12)"
+            title="Distribuição % — Top 12 OBMs"
         )
         fig_pie2.update_traces(textinfo="percent+label")
         fig_pie2.update_layout(height=340, showlegend=False)
         st.plotly_chart(fig_pie2, use_container_width=True)
 
     # Boxplot
-    if df.groupby(col_local).size().max() > 1:
+    if df.groupby(col_obm).size().max() > 1:
         st.markdown("---")
-        st.subheader(f"📦 Boxplot — Top {top_n} Locais")
-        top_locais_box = df.groupby(col_local)[col_valor].sum().nlargest(top_n).index.tolist()
-        df_box = df[df[col_local].isin(top_locais_box)]
+        st.subheader(f"📦 Boxplot — Top {top_n} OBMs")
+        top_box = df.groupby(col_obm)[col_segs].sum().nlargest(top_n).index.tolist()
+        df_box  = df[df[col_obm].isin(top_box)]
 
         fig_box = px.box(
-            df_box, x=col_local, y=col_valor,
-            color=col_local,
-            title=f"Variação de SEGs — Top {top_n} Locais"
+            df_box, x=col_obm, y=col_segs,
+            color=col_obm,
+            title=f"Variação de SEGs — Top {top_n} OBMs"
         )
         fig_box.update_layout(
             showlegend=False, height=420,
@@ -653,7 +635,7 @@ with aba5:
 
     col_b1, col_b2, col_b3 = st.columns([3, 1, 1])
     with col_b1:
-        busca = st.text_input("🔍 Buscar em qualquer campo:")
+        busca = st.text_input("🔍 Buscar:")
     with col_b2:
         st.metric("Registros", len(df))
     with col_b3:
@@ -661,11 +643,9 @@ with aba5:
 
     df_exib = df.copy()
     if busca:
-        mask = df_exib.apply(
-            lambda r: r.astype(str).str.contains(busca, case=False, na=False).any(), axis=1
-        )
+        mask    = df_exib.apply(lambda r: r.astype(str).str.contains(busca, case=False, na=False).any(), axis=1)
         df_exib = df_exib[mask]
-        st.caption(f"{len(df_exib)} resultado(s) encontrado(s)")
+        st.caption(f"{len(df_exib)} resultado(s)")
 
     st.dataframe(df_exib, use_container_width=True, height=420)
 
@@ -673,13 +653,13 @@ with aba5:
     st.download_button(
         "⬇️ Baixar CSV filtrado",
         data=csv_bytes,
-        file_name="cbmam_filtrado.csv",
+        file_name="cbmam_segs_obm.csv",
         mime="text/csv"
     )
 
     st.markdown("---")
     st.subheader("📊 Estatísticas Descritivas")
-    st.dataframe(df[[col_valor]].describe().round(2), use_container_width=True)
+    st.dataframe(df[[col_segs]].describe().round(2), use_container_width=True)
 
 # ─────────────────────────────────────────────
 # RODAPÉ
@@ -687,7 +667,7 @@ with aba5:
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center; color:#888; font-size:0.82rem'>"
-    "Dashboard CBMAM · relatorio.csv · Foco: Março · Python + Streamlit"
+    "Dashboard CBMAM · SEGs por OBM · Foco: Março · relatorio.csv · Python + Streamlit"
     "</div>",
     unsafe_allow_html=True
 )
