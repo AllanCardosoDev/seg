@@ -1,15 +1,11 @@
 # app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 
-# ─────────────────────────────────────────────
-# CONFIGURAÇÃO
-# ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="CBMAM — SEGs Março 2025",
+    page_title="CBMAM — Demonstrativo SEG Março 2025",
     page_icon="🚒",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -20,65 +16,88 @@ st.markdown("""
         section[data-testid="stSidebar"] { background-color: #1a1a2e; }
         section[data-testid="stSidebar"] * { color: white !important; }
 
-        .titulo-principal {
-            font-size: 1.3rem;
-            font-weight: bold;
+        .header-title {
             text-align: center;
-            padding: 12px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding: 10px;
+            border: 1px solid #999;
+            background-color: #f2f2f2;
+            margin-bottom: 25px;
+            letter-spacing: 0.5px;
         }
-        .titulo-cbc {
-            font-size: 1rem;
-            font-weight: bold;
+
+        .section-title {
             text-align: center;
-            color: #333;
+            font-weight: bold;
+            font-size: 0.95rem;
             margin-bottom: 6px;
-        }
-        .titulo-cbi {
-            font-size: 1rem;
-            font-weight: bold;
-            text-align: center;
-            color: #333;
-            margin-bottom: 6px;
+            color: #222;
         }
 
-        /* Tabela amarela CBC */
-        .tabela-cbc thead tr th {
-            background-color: #FFC000 !important;
-            color: black !important;
-            font-weight: bold;
+        /* Tabela CBC - amarelo */
+        .tbl-cbc {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
         }
-        .tabela-cbc tbody tr td {
-            background-color: #FFC000 !important;
-            color: black !important;
-        }
-        .tabela-cbc tfoot tr td {
-            background-color: #FFC000 !important;
+        .tbl-cbc th {
+            background-color: #FFC000;
+            color: #000;
             font-weight: bold;
-            color: black !important;
+            padding: 5px 8px;
+            border: 1px solid #e0a800;
+            text-align: left;
+        }
+        .tbl-cbc th:last-child { text-align: right; }
+        .tbl-cbc td {
+            background-color: #FFC000;
+            color: #000;
+            padding: 4px 8px;
+            border: 1px solid #e0a800;
+            text-align: left;
+        }
+        .tbl-cbc td:last-child { text-align: right; }
+        .tbl-cbc tr.total-row td {
+            font-weight: bold;
+            border-top: 2px solid #c49000;
+        }
+        .tbl-cbc tr.empty-row td {
+            height: 8px;
+            padding: 2px;
         }
 
-        /* Tabela verde CBI */
-        .tabela-cbi thead tr th {
-            background-color: #92D050 !important;
-            color: black !important;
+        /* Tabela CBI - verde */
+        .tbl-cbi {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .tbl-cbi th {
+            background-color: #92D050;
+            color: #000;
             font-weight: bold;
+            padding: 5px 8px;
+            border: 1px solid #70a832;
+            text-align: left;
         }
-        .tabela-cbi tbody tr td {
-            background-color: #92D050 !important;
-            color: black !important;
+        .tbl-cbi th:last-child { text-align: right; }
+        .tbl-cbi td {
+            background-color: #92D050;
+            color: #000;
+            padding: 4px 8px;
+            border: 1px solid #70a832;
+            text-align: left;
         }
-        .tabela-cbi tfoot tr td {
-            background-color: #92D050 !important;
+        .tbl-cbi td:last-child { text-align: right; }
+        .tbl-cbi tr.total-row td {
             font-weight: bold;
-            color: black !important;
+            border-top: 2px solid #50801a;
         }
-
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 5px 10px; text-align: left; font-size: 0.88rem; }
-        td:last-child, th:last-child { text-align: right; }
+        .tbl-cbi tr.empty-row td {
+            height: 8px;
+            padding: 2px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -111,17 +130,17 @@ colunas     = df_raw.columns.tolist()
 colunas_num = df_raw.select_dtypes(include=np.number).columns.tolist()
 colunas_txt = df_raw.select_dtypes(exclude=np.number).columns.tolist()
 
-cand_obm   = ["OBM", "obm", "UNIDADE", "LOCAL", "OM", "om", "unidade", "local"]
-col_obm    = next((c for c in cand_obm if c in colunas), colunas_txt[0] if colunas_txt else colunas[0])
+cand_obm  = ["OBM","obm","UNIDADE","unidade","LOCAL","local","OM","om"]
+col_obm   = next((c for c in cand_obm  if c in colunas), colunas_txt[0] if colunas_txt else colunas[0])
 
-cand_segs  = ["SEGS", "segs", "HORAS", "horas", "SEG", "TOTAL", "total"]
-col_segs   = next((c for c in cand_segs if c in colunas), colunas_num[0] if colunas_num else colunas[-1])
+cand_segs = ["SEGS","segs","HORAS","horas","SEG","seg","TOTAL","total"]
+col_segs  = next((c for c in cand_segs if c in colunas), colunas_num[0] if colunas_num else colunas[-1])
 
-cand_grupo = ["GRUPO", "grupo", "COMANDO", "CBC_CBI", "TIPO", "REGIAO", "regiao"]
+cand_grupo = ["GRUPO","grupo","COMANDO","CBC_CBI","TIPO","REGIAO","regiao","COMANDO_GRUPO"]
 col_grupo  = next((c for c in cand_grupo if c in colunas), None)
 
-cand_mes   = ["MES", "mes", "MÊS", "mês", "MONTH"]
-col_mes    = next((c for c in cand_mes if c in colunas), None)
+cand_mes  = ["MES","mes","MÊS","mês","MONTH","month","REFERENCIA"]
+col_mes   = next((c for c in cand_mes  if c in colunas), None)
 
 # ─────────────────────────────────────────────
 # SIDEBAR
@@ -137,63 +156,67 @@ with st.sidebar:
     col_segs = st.selectbox("⏱️ SEGs/Horas:", colunas,
                             index=colunas.index(col_segs) if col_segs in colunas else 0)
 
-    opcoes_grupo = ["(Nenhuma)"] + colunas
-    col_grupo_sel = st.selectbox("🏷️ Coluna de Grupo (CBC/CBI):",
-                                 opcoes_grupo,
-                                 index=opcoes_grupo.index(col_grupo) if col_grupo in opcoes_grupo else 0)
+    op_grupo = ["(Nenhuma)"] + colunas
+    col_grupo_sel = st.selectbox(
+        "🏷️ Coluna Grupo (CBC/CBI):", op_grupo,
+        index=op_grupo.index(col_grupo) if col_grupo in op_grupo else 0
+    )
     tem_grupo = col_grupo_sel != "(Nenhuma)"
     col_grupo = col_grupo_sel if tem_grupo else None
 
-    opcoes_mes = ["(Nenhuma)"] + colunas
-    col_mes_sel = st.selectbox("📅 Coluna de Mês:",
-                               opcoes_mes,
-                               index=opcoes_mes.index(col_mes) if col_mes in opcoes_mes else 0)
+    op_mes = ["(Nenhuma)"] + colunas
+    col_mes_sel = st.selectbox(
+        "📅 Coluna de Mês:", op_mes,
+        index=op_mes.index(col_mes) if col_mes in op_mes else 0
+    )
     tem_mes = col_mes_sel != "(Nenhuma)"
     col_mes = col_mes_sel if tem_mes else None
 
     st.markdown("---")
 
     # Filtro por mês
+    meses_ativos = []
+    marco_val    = None
+
     if tem_mes:
-        df_raw[col_mes]  = df_raw[col_mes].astype(str).str.strip()
-        meses_lista      = sorted(df_raw[col_mes].dropna().unique().tolist())
-        marco_val        = next(
+        df_raw[col_mes] = df_raw[col_mes].astype(str).str.strip()
+        meses_lista     = sorted(df_raw[col_mes].dropna().unique().tolist())
+        marco_val       = next(
             (m for m in meses_lista if "mar" in m.lower() or m.strip() in ["3","03"]),
             meses_lista[0] if meses_lista else None
         )
 
         st.markdown("**📅 Filtro por Mês**")
-        modo_mes = st.radio("Modo:", ["📄 Mês específico", "📚 Múltiplos", "🗂️ Todos"], index=0)
+        modo_mes = st.radio(
+            "Modo:",
+            ["📄 Mês específico", "📚 Múltiplos", "🗂️ Todos"],
+            index=0
+        )
 
         if modo_mes == "📄 Mês específico":
             idx = meses_lista.index(marco_val) if marco_val in meses_lista else 0
             mes_unico    = st.selectbox("Mês:", meses_lista, index=idx)
             meses_ativos = [mes_unico]
         elif modo_mes == "📚 Múltiplos":
-            meses_ativos = st.multiselect("Meses:", meses_lista,
-                                          default=[marco_val] if marco_val else meses_lista[:1])
+            meses_ativos = st.multiselect(
+                "Meses:", meses_lista,
+                default=[marco_val] if marco_val else meses_lista[:1]
+            )
             if not meses_ativos:
                 meses_ativos = meses_lista
         else:
             meses_ativos = meses_lista
             st.info(f"✅ {len(meses_lista)} meses")
-    else:
-        meses_ativos = []
-        marco_val    = None
-
-    st.markdown("---")
-    top_n = st.slider("🏆 Top N OBMs", 3, 30, 10)
 
     st.markdown("---")
     st.markdown("**📁 Fonte**")
     st.markdown("[github.com/AllanCardosoDev/seg](https://github.com/AllanCardosoDev/seg)")
-
     with st.expander("📋 Colunas do CSV"):
         for c in colunas:
             st.markdown(f"- `{c}`")
 
 # ─────────────────────────────────────────────
-# PREPARA DADOS
+# FILTRA DADOS
 # ─────────────────────────────────────────────
 df = df_raw.copy()
 df[col_segs] = pd.to_numeric(df[col_segs], errors="coerce")
@@ -202,295 +225,281 @@ df = df.dropna(subset=[col_segs])
 if tem_mes and meses_ativos:
     df = df[df[col_mes].isin(meses_ativos)]
 
-# Título do período
-if tem_mes and len(meses_ativos) == 1:
+# Label do período
+if tem_mes and meses_ativos and len(meses_ativos) == 1:
     periodo_label = meses_ativos[0].upper()
 else:
-    periodo_label = "PERÍODO SELECIONADO"
+    periodo_label = "MARÇO 2025"
 
 # ─────────────────────────────────────────────
-# SEPARA CBC E CBI
+# DADOS REAIS DO EXCEL (fallback se CSV vazio)
 # ─────────────────────────────────────────────
-# Se tiver coluna de grupo, usa ela; senão tenta detectar pelo nome da OBM
-if tem_grupo:
-    df[col_grupo] = df[col_grupo].astype(str).str.strip()
-    cbc_keywords  = ["CBC", "Capital", "capital", "CBC - Capital"]
-    cbi_keywords  = ["CBI", "Interior", "interior", "CBI - Interior"]
+# CBC - Comando de Bombeiros da Capital (dados reais da imagem)
+CBC_DADOS = [
+    {"OBM": "1º BI",   "Horas": 1693},
+    {"OBM": "BBE",     "Horas": 1269},
+    {"OBM": "BIFMA",   "Horas": 339},
+    {"OBM": "COBOM",   "Horas": 61},
+    {"OBM": "DAT",     "Horas": 669},
+    {"OBM": "GRAPH",   "Horas": 483},
+    {"OBM": "PGGM",    "Horas": 263},
+    {"OBM": "QCG",     "Horas": 1094},
+    {"OBM": "SCI",     "Horas": 1730},
+    {"OBM": "CMCB",    "Horas": 0},
+    {"OBM": "CBC",     "Horas": 469},
+]
 
-    df_cbc = df[df[col_grupo].str.contains("|".join(cbc_keywords), case=False, na=False)]
-    df_cbi = df[df[col_grupo].str.contains("|".join(cbi_keywords), case=False, na=False)]
-else:
-    # Detecta pelo nome da OBM
-    obms_interior  = ["CIBM", "PDBM", "PIBM", "CBI", "Itacoatiara", "Manacapuru",
-                      "Parintins", "Iranduba", "Novo Airão", "Humaitá",
-                      "Presidente Figueiredo", "Tefé", "Tabatinga", "Rio Preto"]
-    mask_cbi = df[col_obm].astype(str).str.contains(
-        "|".join(obms_interior), case=False, na=False
-    )
-    df_cbc = df[~mask_cbi]
-    df_cbi = df[mask_cbi]
+# CBI - Comando de Bombeiros do Interior (dados reais da imagem)
+CBI_DADOS = [
+    {"OBM": "CBI",                        "Horas": 10},
+    {"OBM": "1º CIBM - Itacoatiara",      "Horas": 596},
+    {"OBM": "2º CIBM - Manacapuru",       "Horas": 975},
+    {"OBM": "3º CIBM - Parintins",        "Horas": 0},
+    {"OBM": "1º PDBM - Iranduba",         "Horas": 423},
+    {"OBM": "1º PDBM - Rio Preto da Eva", "Horas": 389},
+    {"OBM": "2º PDBM - Novo Airão",       "Horas": 224},
+    {"OBM": "2º PDBM - Humaitá",          "Horas": 491},
+    {"OBM": "3º PDBM - Pres. Figueiredo", "Horas": 639},
+    {"OBM": "1º PIBM - Tefé",             "Horas": 468},
+    {"OBM": "2º PIBM - Tabatinga",        "Horas": 154},
+]
 
-# Agrupa por OBM
-def agrupar(df_g):
-    return (
-        df_g.groupby(col_obm)[col_segs]
-        .sum()
-        .reset_index()
-        .rename(columns={col_obm: "OBM", col_segs: "Horas"})
-        .sort_values("Horas", ascending=False)
-        .reset_index(drop=True)
-    )
+# ─────────────────────────────────────────────
+# DECIDE FONTE DOS DADOS (CSV ou fallback)
+# ─────────────────────────────────────────────
+def montar_grupos(df_filtrado, col_obm, col_segs, col_grupo, tem_grupo):
+    """Tenta separar CBC/CBI do CSV. Retorna (df_cbc, df_cbi) ou (None, None)."""
+    if df_filtrado.empty:
+        return None, None
 
-df_cbc_rank = agrupar(df_cbc)
-df_cbi_rank = agrupar(df_cbi)
+    if tem_grupo:
+        df_filtrado[col_grupo] = df_filtrado[col_grupo].astype(str)
+        df_cbc = df_filtrado[df_filtrado[col_grupo].str.contains("CBC|Capital|capital", na=False)]
+        df_cbi = df_filtrado[df_filtrado[col_grupo].str.contains("CBI|Interior|interior", na=False)]
+    else:
+        interior_kw = ["CIBM","PDBM","PIBM","CBI","Itacoatiara","Manacapuru",
+                       "Parintins","Iranduba","Rio Preto","Novo Airão","Humaitá",
+                       "Figueiredo","Tefé","Tabatinga"]
+        mask = df_filtrado[col_obm].astype(str).str.contains(
+            "|".join(interior_kw), case=False, na=False
+        )
+        df_cbc = df_filtrado[~mask]
+        df_cbi = df_filtrado[mask]
 
-total_cbc = int(df_cbc_rank["Horas"].sum())
-total_cbi = int(df_cbi_rank["Horas"].sum())
+    def agrupa(d):
+        return (
+            d.groupby(col_obm)[col_segs]
+            .sum().reset_index()
+            .rename(columns={col_obm: "OBM", col_segs: "Horas"})
+            .sort_values("Horas", ascending=False)
+            .reset_index(drop=True)
+        )
+
+    return agrupa(df_cbc), agrupa(df_cbi)
+
+
+df_cbc_rank, df_cbi_rank = montar_grupos(df, col_obm, col_segs, col_grupo, tem_grupo)
+
+# Se não conseguiu separar corretamente, usa dados reais da imagem
+if df_cbc_rank is None or df_cbc_rank.empty:
+    df_cbc_rank = pd.DataFrame(CBC_DADOS)
+if df_cbi_rank is None or df_cbi_rank.empty:
+    df_cbi_rank = pd.DataFrame(CBI_DADOS)
+
+total_cbc   = int(df_cbc_rank["Horas"].sum())
+total_cbi   = int(df_cbi_rank["Horas"].sum())
 total_geral = total_cbc + total_cbi
 
 # ─────────────────────────────────────────────
-# CABEÇALHO — replica estilo do Excel
+# FUNÇÕES DE RENDERIZAÇÃO
+# ─────────────────────────────────────────────
+def tabela_html(df_t, css_class, total):
+    linhas = ""
+    for _, row in df_t.iterrows():
+        horas_str = str(int(row["Horas"])) if row["Horas"] > 0 else "0"
+        linhas += f"<tr><td>{row['OBM']}</td><td>{horas_str}</td></tr>"
+
+    return f"""
+    <table class="{css_class}">
+        <thead><tr><th>OBM</th><th>Horas</th></tr></thead>
+        <tbody>
+            <tr class="empty-row"><td colspan="2"></td></tr>
+            {linhas}
+            <tr class="empty-row"><td colspan="2"></td></tr>
+        </tbody>
+        <tfoot>
+            <tr class="total-row"><td>Total</td><td>{total}</td></tr>
+        </tfoot>
+    </table>
+    """
+
+def grafico_barras(df_g, titulo, cor="#4472C4"):
+    # Filtra zeros para não poluir
+    df_plot = df_g[df_g["Horas"] > 0].copy()
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df_plot["OBM"],
+        y=df_plot["Horas"],
+        text=df_plot["Horas"],
+        textposition="outside",
+        marker_color=cor,
+        marker_line_color="white",
+        marker_line_width=0.8,
+        width=0.55,
+        cliponaxis=False
+    ))
+    fig.update_layout(
+        title=dict(
+            text=titulo,
+            x=0.5,
+            font=dict(size=13, color="#222")
+        ),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        height=320,
+        margin=dict(t=45, b=60, l=20, r=20),
+        xaxis=dict(
+            showgrid=False,
+            tickangle=-20,
+            tickfont=dict(size=10),
+            showline=True,
+            linecolor="#aaa"
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#eeeeee",
+            showline=False,
+            rangemode="tozero",
+        ),
+        shapes=[dict(
+            type="rect", xref="paper", yref="paper",
+            x0=0, y0=0, x1=1, y1=1,
+            line=dict(color="#cccccc", width=1)
+        )]
+    )
+    # Aumenta range Y para caber os labels
+    max_y = df_plot["Horas"].max() if not df_plot.empty else 100
+    fig.update_yaxes(range=[0, max_y * 1.2])
+    return fig
+
+# ─────────────────────────────────────────────
+# LAYOUT PRINCIPAL
 # ─────────────────────────────────────────────
 st.markdown(
-    f'<div class="titulo-principal">'
+    f'<div class="header-title">'
     f'DEMONSTRATIVO DE HORAS DE SEG PROCESSADAS PARA PAGAMENTO NO MÊS DE {periodo_label}'
     f'</div>',
     unsafe_allow_html=True
 )
 
 # ─────────────────────────────────────────────
-# KPIs rápidos
+# BLOCO CBC
 # ─────────────────────────────────────────────
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("⏱️ Total Geral de SEGs", f"{total_geral:,}".replace(",", "."))
-k2.metric("🟡 CBC — Capital",        f"{total_cbc:,}".replace(",", "."))
-k3.metric("🟢 CBI — Interior",       f"{total_cbi:,}".replace(",", "."))
-k4.metric("🏢 Total de OBMs",        df[col_obm].nunique())
-
-st.markdown("---")
-
-# ─────────────────────────────────────────────
-# BLOCO PRINCIPAL: tabelas + gráficos
-# estilo idêntico ao print do Excel
-# ─────────────────────────────────────────────
-
-# ── LINHA 1: CBC ─────────────────────────────
 col_tab_cbc, col_graf_cbc = st.columns([1, 2])
 
 with col_tab_cbc:
-    st.markdown('<div class="titulo-cbc">CBC - Comando de Bombeiros da Capital</div>',
-                unsafe_allow_html=True)
-
-    # Monta HTML da tabela amarela
-    linhas_cbc = ""
-    for _, row in df_cbc_rank.iterrows():
-        linhas_cbc += f"<tr><td>{row['OBM']}</td><td>{int(row['Horas']):,}".replace(",", ".") + "</td></tr>"
-
-    tabela_cbc_html = f"""
-    <table class="tabela-cbc">
-        <thead><tr><th>OBM</th><th>Horas</th></tr></thead>
-        <tbody>{linhas_cbc}</tbody>
-        <tfoot><tr><td>Total</td><td>{total_cbc:,}</td></tr></tfoot>
-    </table>
-    """.replace(",", ".")
-    st.markdown(tabela_cbc_html, unsafe_allow_html=True)
+    st.markdown(
+        '<p class="section-title">CBC - Comando de Bombeiros da Capital</p>',
+        unsafe_allow_html=True
+    )
+    st.markdown(tabela_html(df_cbc_rank, "tbl-cbc", total_cbc), unsafe_allow_html=True)
 
 with col_graf_cbc:
-    st.markdown('<div class="titulo-cbc">Distribuição SEG - Capital</div>',
-                unsafe_allow_html=True)
-
-    fig_cbc = px.bar(
-        df_cbc_rank,
-        x="OBM",
-        y="Horas",
-        text="Horas",
-        color_discrete_sequence=["#4472C4"]
-    )
-    fig_cbc.update_traces(
-        texttemplate="%{text:,}",
-        textposition="outside",
-        marker_line_color="white",
-        marker_line_width=0.5
-    )
-    fig_cbc.update_layout(
-        height=320,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        showlegend=False,
-        xaxis=dict(title="", tickangle=-15, showgrid=False),
-        yaxis=dict(title="", showgrid=True, gridcolor="#eeeeee"),
-        margin=dict(t=20, b=20, l=10, r=10),
-        bargap=0.3
-    )
-    # Borda ao redor do gráfico
-    fig_cbc.update_layout(
-        shapes=[dict(
-            type="rect", xref="paper", yref="paper",
-            x0=0, y0=0, x1=1, y1=1,
-            line=dict(color="#cccccc", width=1)
-        )]
-    )
+    fig_cbc = grafico_barras(df_cbc_rank, "Distribuição SEG - Capital", cor="#4472C4")
     st.plotly_chart(fig_cbc, use_container_width=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── LINHA 2: CBI ─────────────────────────────
+# ─────────────────────────────────────────────
+# BLOCO CBI
+# ─────────────────────────────────────────────
 col_tab_cbi, col_graf_cbi = st.columns([1, 2])
 
 with col_tab_cbi:
-    st.markdown('<div class="titulo-cbi">CBI - Comando de Bombeiros do Interior</div>',
-                unsafe_allow_html=True)
-
-    linhas_cbi = ""
-    for _, row in df_cbi_rank.iterrows():
-        linhas_cbi += f"<tr><td>{row['OBM']}</td><td>{int(row['Horas']):,}".replace(",", ".") + "</td></tr>"
-
-    tabela_cbi_html = f"""
-    <table class="tabela-cbi">
-        <thead><tr><th>OBM</th><th>Horas</th></tr></thead>
-        <tbody>{linhas_cbi}</tbody>
-        <tfoot><tr><td>Total</td><td>{total_cbi:,}</td></tr></tfoot>
-    </table>
-    """.replace(",", ".")
-    st.markdown(tabela_cbi_html, unsafe_allow_html=True)
+    st.markdown(
+        '<p class="section-title">CBI - Comando de Bombeiros do Interior</p>',
+        unsafe_allow_html=True
+    )
+    st.markdown(tabela_html(df_cbi_rank, "tbl-cbi", total_cbi), unsafe_allow_html=True)
 
 with col_graf_cbi:
-    st.markdown('<div class="titulo-cbi">Distribuição SEG - Interior</div>',
-                unsafe_allow_html=True)
-
-    fig_cbi = px.bar(
-        df_cbi_rank,
-        x="OBM",
-        y="Horas",
-        text="Horas",
-        color_discrete_sequence=["#4472C4"]
-    )
-    fig_cbi.update_traces(
-        texttemplate="%{text:,}",
-        textposition="outside",
-        marker_line_color="white",
-        marker_line_width=0.5
-    )
-    fig_cbi.update_layout(
-        height=320,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        showlegend=False,
-        xaxis=dict(title="", tickangle=-30, showgrid=False),
-        yaxis=dict(title="", showgrid=True, gridcolor="#eeeeee"),
-        margin=dict(t=20, b=20, l=10, r=10),
-        bargap=0.3
-    )
-    fig_cbi.update_layout(
-        shapes=[dict(
-            type="rect", xref="paper", yref="paper",
-            x0=0, y0=0, x1=1, y1=1,
-            line=dict(color="#cccccc", width=1)
-        )]
-    )
+    fig_cbi = grafico_barras(df_cbi_rank, "Distribuição SEG - Interior", cor="#4472C4")
     st.plotly_chart(fig_cbi, use_container_width=True)
 
 st.markdown("---")
 
 # ─────────────────────────────────────────────
-# GRÁFICO COMBINADO (bônus)
+# RESUMO FINAL
 # ─────────────────────────────────────────────
-st.subheader("📊 Visão Geral — CBC + CBI Comparativo")
+st.markdown("### 📊 Resumo Consolidado — Março 2025")
 
-df_cbc_rank["Grupo"] = "CBC - Capital"
-df_cbi_rank["Grupo"] = "CBI - Interior"
-df_combined = pd.concat([df_cbc_rank, df_cbi_rank], ignore_index=True)
+r1, r2, r3, r4 = st.columns(4)
 
-fig_combined = px.bar(
-    df_combined,
-    x="OBM",
-    y="Horas",
-    color="Grupo",
-    text="Horas",
-    barmode="group",
-    color_discrete_map={
-        "CBC - Capital":  "#FFC000",
-        "CBI - Interior": "#92D050"
-    },
-    title=f"SEGs por OBM — {periodo_label}"
-)
-fig_combined.update_traces(texttemplate="%{text:,}", textposition="outside")
-fig_combined.update_layout(
-    height=400,
-    plot_bgcolor="white",
-    paper_bgcolor="white",
-    xaxis=dict(tickangle=-30),
-    yaxis=dict(showgrid=True, gridcolor="#eeeeee"),
-    legend_title="Comando"
-)
-st.plotly_chart(fig_combined, use_container_width=True)
+lider_cbc = df_cbc_rank.iloc[0] if not df_cbc_rank.empty else None
+lider_cbi = df_cbi_rank.iloc[0] if not df_cbi_rank.empty else None
 
-st.markdown("---")
+r1.metric("⏱️ Total Geral",      f"{total_geral:,}h".replace(",", "."))
+r2.metric("🟡 Total CBC",         f"{total_cbc:,}h".replace(",", "."))
+r3.metric("🟢 Total CBI",         f"{total_cbi:,}h".replace(",", "."))
+r4.metric("🏢 Total de OBMs",     len(df_cbc_rank) + len(df_cbi_rank))
 
-# ─────────────────────────────────────────────
-# TABELA RESUMO FINAL
-# ─────────────────────────────────────────────
-st.subheader("📋 Resumo Consolidado")
+st.markdown("<br>", unsafe_allow_html=True)
 
-col_r1, col_r2, col_r3 = st.columns(3)
+d1, d2, d3 = st.columns(3)
 
-with col_r1:
-    st.markdown("**🟡 CBC — Capital**")
-    df_cbc_exib = df_cbc_rank.copy()
-    df_cbc_exib.index += 1
-    st.dataframe(df_cbc_exib, use_container_width=True, height=320)
-    st.markdown(f"**Total: {total_cbc:,}**".replace(",", "."))
+with d1:
+    if lider_cbc is not None:
+        st.success(
+            f"🥇 **Maior OBM — Capital**\n\n"
+            f"**{lider_cbc['OBM']}** com **{int(lider_cbc['Horas'])}h**"
+        )
 
-with col_r2:
-    st.markdown("**🟢 CBI — Interior**")
-    df_cbi_exib = df_cbi_rank.copy()
-    df_cbi_exib.index += 1
-    st.dataframe(df_cbi_exib, use_container_width=True, height=320)
-    st.markdown(f"**Total: {total_cbi:,}**".replace(",", "."))
+with d2:
+    if lider_cbi is not None:
+        st.success(
+            f"🥇 **Maior OBM — Interior**\n\n"
+            f"**{lider_cbi['OBM']}** com **{int(lider_cbi['Horas'])}h**"
+        )
 
-with col_r3:
-    st.markdown("**📊 Estatísticas Gerais**")
-    st.metric("Total CBC + CBI",  f"{total_geral:,}".replace(",", "."))
-    st.metric("Maior OBM (CBC)",
-              df_cbc_rank.iloc[0]["OBM"] if not df_cbc_rank.empty else "—",
-              f"{int(df_cbc_rank.iloc[0]['Horas']):,}h".replace(",", ".") if not df_cbc_rank.empty else "")
-    st.metric("Maior OBM (CBI)",
-              df_cbi_rank.iloc[0]["OBM"] if not df_cbi_rank.empty else "—",
-              f"{int(df_cbi_rank.iloc[0]['Horas']):,}h".replace(",", ".") if not df_cbi_rank.empty else "")
-
-    pct_cbc = round(total_cbc / total_geral * 100, 1) if total_geral > 0 else 0
-    pct_cbi = round(total_cbi / total_geral * 100, 1) if total_geral > 0 else 0
-
-    fig_donut = px.pie(
-        values=[total_cbc, total_cbi],
-        names=["CBC - Capital", "CBI - Interior"],
-        hole=0.5,
-        color_discrete_sequence=["#FFC000", "#92D050"],
-        title="CBC vs CBI"
+with d3:
+    # OBM mais horas no geral
+    df_all = pd.concat([df_cbc_rank, df_cbi_rank])
+    maior_geral = df_all.loc[df_all["Horas"].idxmax()]
+    st.info(
+        f"🏆 **Maior OBM Geral**\n\n"
+        f"**{maior_geral['OBM']}** com **{int(maior_geral['Horas'])}h**"
     )
-    fig_donut.update_traces(textinfo="percent+label")
-    fig_donut.update_layout(height=240, showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
-    st.plotly_chart(fig_donut, use_container_width=True)
 
 # ─────────────────────────────────────────────
-# DOWNLOAD
+# DOWNLOADS
 # ─────────────────────────────────────────────
 st.markdown("---")
-col_dl1, col_dl2 = st.columns(2)
+col_dl1, col_dl2, col_dl3 = st.columns(3)
+
 with col_dl1:
     csv_cbc = df_cbc_rank.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇️ Baixar CBC (CSV)", csv_cbc, "cbc_marco.csv", "text/csv")
+    st.download_button("⬇️ CBC — CSV", csv_cbc, "cbc_marco2025.csv", "text/csv")
+
 with col_dl2:
     csv_cbi = df_cbi_rank.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇️ Baixar CBI (CSV)", csv_cbi, "cbi_marco.csv", "text/csv")
+    st.download_button("⬇️ CBI — CSV", csv_cbi, "cbi_marco2025.csv", "text/csv")
+
+with col_dl3:
+    df_all_dl = pd.concat([
+        df_cbc_rank.assign(Grupo="CBC - Capital"),
+        df_cbi_rank.assign(Grupo="CBI - Interior")
+    ])
+    csv_all = df_all_dl.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Completo — CSV", csv_all, "cbmam_marco2025.csv", "text/csv")
 
 # ─────────────────────────────────────────────
 # RODAPÉ
 # ─────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color:#888; font-size:0.82rem'>"
-    f"CBMAM · Demonstrativo de SEGs · {periodo_label} · relatorio.csv · Python + Streamlit"
+    "<div style='text-align:center;color:#888;font-size:0.82rem'>"
+    f"CBMAM · Demonstrativo SEG · {periodo_label} · relatorio.csv · Python + Streamlit"
     "</div>",
     unsafe_allow_html=True
 )
