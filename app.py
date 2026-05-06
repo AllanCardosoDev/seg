@@ -27,7 +27,7 @@ st.markdown("""
 # ─────────────────────────────────────────────
 # CONSTANTES
 # ─────────────────────────────────────────────
-ARQUIVO = "1_Relatrio_GRAFICOS_3.xlsx"
+ARQUIVO = "relatorio.csv"
 
 # Mapeamento das abas de militares (nome da aba → mês legível)
 ABAS_MILITARES = {
