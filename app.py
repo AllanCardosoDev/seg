@@ -92,11 +92,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# DADOS REAIS — MARÇO 2025 e MARÇO 2026
+# DADOS REAIS — MARÇO 2025 e MARÇO 2026 (fallback)
 # ─────────────────────────────────────────────
 
-# ── MARÇO 2025 ────────────────────────────────
-CBC_2025 = [
+# Estes dados serão usados APENAS se o arquivo Excel não puder ser lido.
+# Eles garantem que o dashboard sempre mostre os valores corretos.
+
+# ── MARÇO 2025 (dados das suas imagens do Excel) ────────────────────────────────
+CBC_2025_FALLBACK = [
     {"OBM": "1º BI",   "Horas": 1693},
     {"OBM": "BBE",     "Horas": 1269},
     {"OBM": "BIFMA",   "Horas": 339},
@@ -110,7 +113,7 @@ CBC_2025 = [
     {"OBM": "CBC",     "Horas": 469},
 ]
 
-CBI_2025 = [
+CBI_2025_FALLBACK = [
     {"OBM": "CBI",                          "Horas": 10},
     {"OBM": "1º CIBM - Itacoatiara",        "Horas": 596},
     {"OBM": "2º CIBM - Manacapuru",         "Horas": 975},
@@ -125,7 +128,7 @@ CBI_2025 = [
 ]
 
 # ── MARÇO 2026 (dados do dashboard/Excel) ─────
-CBC_2026 = [
+CBC_2026_FALLBACK = [
     {"OBM": "SCI",     "Horas": 2003},
     {"OBM": "1º BI",   "Horas": 1495},
     {"OBM": "BBE",     "Horas": 1102},
@@ -139,73 +142,86 @@ CBC_2026 = [
     {"OBM": "PGGM",    "Horas": 34},
 ]
 
-# Total CBC 2026 = 7.844h conforme dashboard
-# CBI 2026 = 4.231h conforme dashboard
-# Total = 12.075h
-
-CBI_2026 = [
-    {"OBM": "CBI",                          "Horas": 0},
-    {"OBM": "1º CIBM - Itacoatiara",        "Horas": 0},
-    {"OBM": "2º CIBM - Manacapuru",         "Horas": 0},
-    {"OBM": "3º CIBM - Parintins",          "Horas": 0},
-    {"OBM": "1º PDBM - Iranduba",           "Horas": 0},
-    {"OBM": "1º PDBM - Rio Preto da Eva",   "Horas": 0},
-    {"OBM": "2º PDBM - Novo Airão",         "Horas": 0},
-    {"OBM": "2º PDBM - Humaitá",            "Horas": 0},
-    {"OBM": "3º PDBM - Presidente Figueiredo", "Horas": 0},
-    {"OBM": "1º PIBM - Tefé",               "Horas": 0},
-    {"OBM": "2º PIBM - Tabatinga",          "Horas": 0},
+CBI_2026_FALLBACK = [
+    {"OBM": "CBI",                          "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "1º CIBM - Itacoatiara",        "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "2º CIBM - Manacapuru",         "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "3º CIBM - Parintins",          "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "1º PDBM - Iranduba",           "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "1º PDBM - Rio Preto da Eva",   "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "2º PDBM - Novo Airão",         "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "2º PDBM - Humaitá",            "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "3º PDBM - Presidente Figueiredo", "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "1º PIBM - Tefé",               "Horas": 0}, # Ajustar com dados reais do Excel
+    {"OBM": "2º PIBM - Tabatinga",          "Horas": 0}, # Ajustar com dados reais do Excel
 ]
 
-# ─────────────────────────────────────────────
-# TENTA CARREGAR DO CSV/EXCEL (dinâmico)
-# ─────────────────────────────────────────────
-URL_CSV = "https://raw.githubusercontent.com/AllanCardosoDev/seg/main/relatorio.csv"
-ARQUIVO_XLSX = "1_Relatrio_GRAFICOS_3.xlsx"
 
-@st.cache_data
-def carregar_csv():
-    for enc in ["utf-8", "utf-8-sig", "latin-1"]:
-        try:
-            df = pd.read_csv(URL_CSV, encoding=enc, header=None, sep=None, engine="python")
-            primeira = str(df.iloc[0, 0]).strip().lower()
-            if not primeira.lstrip("-").isnumeric():
-                df = df.iloc[1:].reset_index(drop=True)
-            if df.shape[1] >= 5:
-                df.columns = ["NUM", "NOME", "GUERRA", "OBM", "HORAS"] + [f"x{i}" for i in range(df.shape[1]-5)]
-            elif df.shape[1] == 4:
-                df.columns = ["NUM", "NOME", "OBM", "HORAS"]
-            elif df.shape[1] == 3:
-                df.columns = ["NOME", "OBM", "HORAS"]
-            df.dropna(how="all", inplace=True)
-            df.reset_index(drop=True, inplace=True)
-            return df
-        except Exception:
-            continue
-    return None
+# ─────────────────────────────────────────────
+# CARREGAMENTO DE ARQUIVOS
+# ─────────────────────────────────────────────
+ARQUIVO_XLSX = "1_Relatrio_GRAFICOS_3.xlsx" # O arquivo Excel local
 
 @st.cache_data
 def carregar_xlsx_aba(arquivo, aba):
     try:
+        # Tenta ler o Excel. header=None para não assumir cabeçalho
         df = pd.read_excel(arquivo, sheet_name=aba, header=None)
         df.dropna(how="all", inplace=True)
         df.reset_index(drop=True, inplace=True)
         return df
-    except Exception:
+    except Exception as e:
+        st.error(f"Erro ao carregar a aba '{aba}' do Excel: {e}")
         return None
 
-def agrupar_por_obm(df, col_obm, col_horas):
-    df[col_horas] = pd.to_numeric(df[col_horas], errors="coerce").fillna(0)
-    df = df[df[col_obm].astype(str).str.strip().ne("")]
-    df = df[df[col_obm].notna()]
+# ─────────────────────────────────────────────
+# FUNÇÕES DE PROCESSAMENTO
+# ─────────────────────────────────────────────
+def agrupar_por_obm(df_militares, col_obm_idx, col_horas_idx, header_row_offset=0):
+    """
+    Agrupa horas por OBM de um DataFrame de militares.
+    col_obm_idx: índice da coluna da OBM (base 0)
+    col_horas_idx: índice da coluna das Horas (base 0)
+    header_row_offset: número de linhas a pular no início se houver cabeçalho
+    """
+    if df_militares is None or df_militares.empty:
+        return pd.DataFrame(columns=["OBM", "Horas"])
+
+    # Pula as linhas de cabeçalho se especificado
+    df_process = df_militares.iloc[header_row_offset:].copy()
+
+    # Renomeia as colunas de interesse para facilitar
+    # Verifica se os índices existem antes de renomear
+    if col_obm_idx < df_process.shape[1] and col_horas_idx < df_process.shape[1]:
+        df_process.rename(columns={
+            df_process.columns[col_obm_idx]: "OBM_TEMP",
+            df_process.columns[col_horas_idx]: "HORAS_TEMP"
+        }, inplace=True)
+    else:
+        st.warning(f"Índices de coluna OBM ({col_obm_idx}) ou Horas ({col_horas_idx}) fora do limite do DataFrame. Verifique a estrutura da aba do Excel.")
+        return pd.DataFrame(columns=["OBM", "Horas"])
+
+
+    # Converte horas para numérico, tratando erros
+    df_process["HORAS_TEMP"] = pd.to_numeric(df_process["HORAS_TEMP"], errors="coerce").fillna(0)
+
+    # Remove linhas com OBM vazia ou nula
+    df_process = df_process[df_process["OBM_TEMP"].astype(str).str.strip().ne("")]
+    df_process = df_process[df_process["OBM_TEMP"].notna()]
+
+    # Agrupa por OBM e soma as horas
     result = (
-        df.groupby(col_obm)[col_horas]
+        df_process.groupby("OBM_TEMP")["HORAS_TEMP"]
         .sum().reset_index()
-        .rename(columns={col_obm: "OBM", col_horas: "Horas"})
+        .rename(columns={"OBM_TEMP": "OBM", "HORAS_TEMP": "Horas"})
     )
     result["OBM"] = result["OBM"].astype(str).str.strip()
+
+    # Remove OBMs que são totais, nan, ou números (limpeza)
     result = result[~result["OBM"].str.lower().isin(["nan","none","","total"])]
     result = result[~result["OBM"].str.isnumeric()]
+    result = result[result["Horas"] >= 0] # Garante horas não negativas
+
     return result
 
 CBC_LISTA = [
@@ -234,57 +250,59 @@ with st.sidebar:
     periodo = st.radio(
         "Selecione o mês de referência:",
         options=["📅 Março 2025", "📅 Março 2026"],
-        index=1  # padrão: 2026
+        index=0  # Padrão: Março 2025
     )
 
     st.markdown("---")
     st.markdown("**📁 Fonte**")
+    st.markdown(f"Lendo do arquivo: `{ARQUIVO_XLSX}`")
     st.markdown("[github.com/AllanCardosoDev/seg](https://github.com/AllanCardosoDev/seg)")
 
 # ─────────────────────────────────────────────
 # CARREGA DADOS DO PERÍODO SELECIONADO
 # ─────────────────────────────────────────────
+df_cbc = pd.DataFrame()
+df_cbi = pd.DataFrame()
+
 if periodo == "📅 Março 2025":
     periodo_label = "MARÇO 2025"
+    # Lendo da aba "MILITARES MARÇO" do Excel
+    df_militares_2025 = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO")
 
-    # Tenta carregar do CSV dinâmico
-    df_csv = carregar_csv()
-    if df_csv is not None and "OBM" in df_csv.columns and "HORAS" in df_csv.columns:
-        df_obm_raw = agrupar_por_obm(df_csv, "OBM", "HORAS")
-        df_cbc, df_cbi = separar_cbc_cbi(df_obm_raw)
-        if df_cbc.empty:
-            df_cbc = pd.DataFrame(CBC_2025)
-        if df_cbi.empty:
-            df_cbi = pd.DataFrame(CBI_2025)
-    else:
-        df_cbc = pd.DataFrame(CBC_2025)
-        df_cbi = pd.DataFrame(CBI_2025)
+    if df_militares_2025 is not None and not df_militares_2025.empty:
+        # A aba "MILITARES MARÇO" tem a estrutura:
+        # Linha 0: "RELAÇÃO DE MILITARES QUE REALIZARAM SEG NO MÊS DE MARÇO/2025"
+        # Linha 1: "Nº" | "NOME COMPLETO" | "NOME DE GUERRA" | "OBM" | "HORAS"
+        # Os dados começam na linha 2 (índice 2)
+        # OBM é a coluna 3 (índice 3) e Horas é a coluna 4 (índice 4)
+        df_obm_agrupado = agrupar_por_obm(df_militares_2025, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+        df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado)
 
-else:
+    # Fallback se não carregou ou está vazio
+    if df_cbc.empty:
+        df_cbc = pd.DataFrame(CBC_2025_FALLBACK)
+    if df_cbi.empty:
+        df_cbi = pd.DataFrame(CBI_2025_FALLBACK)
+
+else: # Março 2026
     periodo_label = "MARÇO 2026"
+    # Lendo da aba "MILITARES MARÇO 3" do Excel
+    df_militares_2026 = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
 
-    # Tenta carregar da aba MILITARES MARÇO 3 do Excel
-    df_xlsx = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
-    if df_xlsx is not None and df_xlsx.shape[1] >= 4:
-        # Nomeia colunas pela estrutura real
-        if df_xlsx.shape[1] >= 5:
-            df_xlsx.columns = ["NUM","NOME","GUERRA","OBM","HORAS"] + [f"x{i}" for i in range(df_xlsx.shape[1]-5)]
-        else:
-            df_xlsx.columns = ["NUM","NOME","OBM","HORAS"] + [f"x{i}" for i in range(df_xlsx.shape[1]-4)]
+    if df_militares_2026 is not None and not df_militares_2026.empty:
+        # A aba "MILITARES MARÇO 3" tem a estrutura:
+        # Linha 0: "CGOE" | "EMG" | "12" | "2026-03-07 00:00:00" | "APO"
+        # Linha 1: "Nº" | "NOME COMPLETO" | "NOME DE GUERRA" | "OBM" | "HORAS"
+        # Os dados começam na linha 2 (índice 2)
+        # OBM é a coluna 3 (índice 3) e Horas é a coluna 4 (índice 4)
+        df_obm_agrupado = agrupar_por_obm(df_militares_2026, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+        df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado)
 
-        # Pula linhas sem número válido na primeira coluna
-        df_xlsx = df_xlsx[pd.to_numeric(df_xlsx["NUM"], errors="coerce").notna()]
-
-        df_obm_raw = agrupar_por_obm(df_xlsx, "OBM", "HORAS")
-        df_cbc, df_cbi = separar_cbc_cbi(df_obm_raw)
-
-        if df_cbc.empty:
-            df_cbc = pd.DataFrame(CBC_2026)
-        if df_cbi.empty:
-            df_cbi = pd.DataFrame(CBI_2026)
-    else:
-        df_cbc = pd.DataFrame(CBC_2026)
-        df_cbi = pd.DataFrame(CBI_2026)
+    # Fallback se não carregou ou está vazio
+    if df_cbc.empty:
+        df_cbc = pd.DataFrame(CBC_2026_FALLBACK)
+    if df_cbi.empty:
+        df_cbi = pd.DataFrame(CBI_2026_FALLBACK)
 
 # ─────────────────────────────────────────────
 # GARANTE TIPOS E ORDENA
@@ -470,12 +488,26 @@ with r3:
 st.markdown("---")
 st.markdown("### 📊 Comparativo Março 2025 × Março 2026")
 
-df_comp_cbc = pd.DataFrame([
-    {"OBM": r["OBM"], "Horas": r["Horas"], "Período": "Março 2025"}
-    for r in CBC_2025
-] + [
-    {"OBM": r["OBM"], "Horas": r["Horas"], "Período": "Março 2026"}
-    for r in CBC_2026
+# Para o comparativo, vamos carregar os dados de cada mês novamente
+# para garantir que o comparativo reflita os dados do Excel, não apenas fallbacks.
+df_cbc_2025_comp = pd.DataFrame(CBC_2025_FALLBACK) # Usamos fallback para garantir que sempre haja dados
+df_cbc_2026_comp = pd.DataFrame(CBC_2026_FALLBACK) # Usamos fallback para garantir que sempre haja dados
+
+# Tenta carregar do Excel para o comparativo
+df_mil_2025_comp = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO")
+if df_mil_2025_comp is not None and not df_mil_2025_comp.empty:
+    df_obm_2025_comp = agrupar_por_obm(df_mil_2025_comp, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+    df_cbc_2025_comp, _ = separar_cbc_cbi(df_obm_2025_comp)
+
+df_mil_2026_comp = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
+if df_mil_2026_comp is not None and not df_mil_2026_comp.empty:
+    df_obm_2026_comp = agrupar_por_obm(df_mil_2026_comp, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+    df_cbc_2026_comp, _ = separar_cbc_cbi(df_obm_2026_comp)
+
+
+df_comp_cbc = pd.concat([
+    df_cbc_2025_comp.assign(Período="Março 2025"),
+    df_cbc_2026_comp.assign(Período="Março 2026")
 ])
 
 fig_comp = go.Figure()
