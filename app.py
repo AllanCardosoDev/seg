@@ -190,17 +190,16 @@ def agrupar_por_obm(df_militares, col_obm_idx, col_horas_idx, header_row_offset=
     # Pula as linhas de cabeçalho se especificado
     df_process = df_militares.iloc[header_row_offset:].copy()
 
-    # Renomeia as colunas de interesse para facilitar
-    # Verifica se os índices existem antes de renomear
-    if col_obm_idx < df_process.shape[1] and col_horas_idx < df_process.shape[1]:
-        df_process.rename(columns={
-            df_process.columns[col_obm_idx]: "OBM_TEMP",
-            df_process.columns[col_horas_idx]: "HORAS_TEMP"
-        }, inplace=True)
-    else:
+    # Verifica se os índices de coluna são válidos
+    if col_obm_idx >= df_process.shape[1] or col_horas_idx >= df_process.shape[1]:
         st.warning(f"Índices de coluna OBM ({col_obm_idx}) ou Horas ({col_horas_idx}) fora do limite do DataFrame. Verifique a estrutura da aba do Excel.")
         return pd.DataFrame(columns=["OBM", "Horas"])
 
+    # Renomeia as colunas de interesse para facilitar
+    df_process.rename(columns={
+        df_process.columns[col_obm_idx]: "OBM_TEMP",
+        df_process.columns[col_horas_idx]: "HORAS_TEMP"
+    }, inplace=True)
 
     # Converte horas para numérico, tratando erros
     df_process["HORAS_TEMP"] = pd.to_numeric(df_process["HORAS_TEMP"], errors="coerce").fillna(0)
@@ -235,22 +234,22 @@ def is_cbc(nome):
 
 def separar_cbc_cbi(df_obm):
     mask = df_obm["OBM"].apply(is_cbc)
-    cbc  = df_obm[mask].sort_values("Horas", ascending=False).reset_index(drop=True)
-    cbi  = df_obm[~mask].sort_values("Horas", ascending=False).reset_index(drop=True)
-    return cbc, cbi
+    df_cbc = df_obm[mask].copy()
+    df_cbi = df_obm[~mask].copy()
+    return df_cbc, df_cbi
 
 # ─────────────────────────────────────────────
-# SIDEBAR — seleção de período
+# SIDEBAR
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🚒 CBMAM")
-    st.markdown("### Período")
+    st.markdown("### Demonstrativo SEG")
     st.markdown("---")
 
     periodo = st.radio(
         "Selecione o mês de referência:",
         options=["📅 Março 2025", "📅 Março 2026"],
-        index=0  # Padrão: Março 2025
+        index=1  # padrão: 2026
     )
 
     st.markdown("---")
