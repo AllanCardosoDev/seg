@@ -5,57 +5,32 @@ import plotly.graph_objects as go
 import numpy as np
 
 st.set_page_config(
-    page_title="CBMAM — SEG Março 2025",
+    page_title="CBMAM — Demonstrativo SEG",
     page_icon="🚒",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ─────────────────────────────────────────────
-# FORÇA TEMA CLARO + ESTILOS
-# ─────────────────────────────────────────────
 st.markdown("""
     <style>
-        /* Fundo geral branco */
-        .stApp {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
-        [data-testid="stAppViewContainer"] {
-            background-color: #ffffff !important;
-        }
-        [data-testid="stHeader"] {
-            background-color: #ffffff !important;
-        }
-        [data-testid="block-container"] {
-            background-color: #ffffff !important;
-            padding-top: 1rem !important;
-        }
+        .stApp { background-color: #ffffff !important; }
+        [data-testid="stAppViewContainer"] { background-color: #ffffff !important; }
+        [data-testid="block-container"] { background-color: #ffffff !important; padding-top: 1rem !important; }
+        [data-testid="stHeader"] { background-color: #ffffff !important; }
+        h1,h2,h3,h4,p,span,label { color: #000000 !important; }
 
-        /* Métricas */
         [data-testid="stMetric"] {
             background-color: #f8f8f8;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 12px 16px;
         }
-        [data-testid="stMetricLabel"] { color: #333 !important; }
-        [data-testid="stMetricValue"] { color: #000 !important; font-weight: bold; }
+        [data-testid="stMetricLabel"] p { color: #444 !important; font-size: 0.85rem !important; }
+        [data-testid="stMetricValue"] { color: #000 !important; font-weight: bold !important; }
 
-        /* Sidebar */
-        section[data-testid="stSidebar"] {
-            background-color: #1a1a2e !important;
-        }
-        section[data-testid="stSidebar"] * {
-            color: white !important;
-        }
+        section[data-testid="stSidebar"] { background-color: #1a1a2e !important; }
+        section[data-testid="stSidebar"] * { color: white !important; }
 
-        /* Títulos e textos */
-        h1, h2, h3, h4, p, span, div {
-            color: #000000 !important;
-        }
-
-        /* Cabeçalho do demonstrativo */
         .header-title {
             text-align: center;
             font-weight: bold;
@@ -69,194 +44,255 @@ st.markdown("""
             color: #000 !important;
             border-radius: 4px;
         }
-
-        /* Título de seção */
         .section-title {
             text-align: center;
             font-weight: bold;
             font-size: 0.92rem;
             margin-bottom: 6px;
-            margin-top: 4px;
             color: #222 !important;
         }
 
-        /* Tabela CBC — amarela */
-        .tbl-cbc {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            background-color: #FFC000;
-        }
+        /* Tabela CBC amarela */
+        .tbl-cbc { width:100%; border-collapse:collapse; font-size:0.85rem; }
         .tbl-cbc th {
-            background-color: #FFC000;
-            color: #000 !important;
-            font-weight: bold;
-            padding: 7px 10px;
-            border: 1px solid #c89000;
+            background-color:#FFC000; color:#000 !important; font-weight:bold;
+            padding:7px 10px; border:1px solid #c89000;
         }
-        .tbl-cbc th:last-child { text-align: right; }
+        .tbl-cbc th:last-child { text-align:right; }
         .tbl-cbc td {
-            background-color: #FFC000;
-            color: #000 !important;
-            padding: 5px 10px;
-            border: 1px solid #c89000;
+            background-color:#FFC000; color:#000 !important;
+            padding:5px 10px; border:1px solid #c89000;
         }
-        .tbl-cbc td:last-child { text-align: right; }
+        .tbl-cbc td:last-child { text-align:right; }
         .tbl-cbc .total-row td {
-            font-weight: bold;
-            border-top: 2px solid #8a6400;
-            background-color: #e6ac00;
+            font-weight:bold; border-top:2px solid #8a6400;
+            background-color:#e6ac00;
         }
 
-        /* Tabela CBI — verde */
-        .tbl-cbi {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            background-color: #92D050;
-        }
+        /* Tabela CBI verde */
+        .tbl-cbi { width:100%; border-collapse:collapse; font-size:0.85rem; }
         .tbl-cbi th {
-            background-color: #92D050;
-            color: #000 !important;
-            font-weight: bold;
-            padding: 7px 10px;
-            border: 1px solid #5a9e20;
+            background-color:#92D050; color:#000 !important; font-weight:bold;
+            padding:7px 10px; border:1px solid #5a9e20;
         }
-        .tbl-cbi th:last-child { text-align: right; }
+        .tbl-cbi th:last-child { text-align:right; }
         .tbl-cbi td {
-            background-color: #92D050;
-            color: #000 !important;
-            padding: 5px 10px;
-            border: 1px solid #5a9e20;
+            background-color:#92D050; color:#000 !important;
+            padding:5px 10px; border:1px solid #5a9e20;
         }
-        .tbl-cbi td:last-child { text-align: right; }
+        .tbl-cbi td:last-child { text-align:right; }
         .tbl-cbi .total-row td {
-            font-weight: bold;
-            border-top: 2px solid #3a7a00;
-            background-color: #70b830;
+            font-weight:bold; border-top:2px solid #3a7a00;
+            background-color:#70b830;
         }
 
-        /* Divisor */
-        hr {
-            border-color: #dddddd !important;
-        }
-
-        /* Remove padding extra do Streamlit */
-        .block-container {
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
-        }
+        hr { border-color:#dddddd !important; }
+        .block-container { padding-left:2rem !important; padding-right:2rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# CARREGA CSV
+# DADOS REAIS — MARÇO 2025 e MARÇO 2026
+# ─────────────────────────────────────────────
+
+# ── MARÇO 2025 ────────────────────────────────
+CBC_2025 = [
+    {"OBM": "1º BI",   "Horas": 1693},
+    {"OBM": "BBE",     "Horas": 1269},
+    {"OBM": "BIFMA",   "Horas": 339},
+    {"OBM": "COBOM",   "Horas": 61},
+    {"OBM": "DAT",     "Horas": 669},
+    {"OBM": "GRAPH",   "Horas": 483},
+    {"OBM": "PGGM",    "Horas": 263},
+    {"OBM": "QCG",     "Horas": 1094},
+    {"OBM": "SCI",     "Horas": 1730},
+    {"OBM": "CMCB",    "Horas": 0},
+    {"OBM": "CBC",     "Horas": 469},
+]
+
+CBI_2025 = [
+    {"OBM": "CBI",                          "Horas": 10},
+    {"OBM": "1º CIBM - Itacoatiara",        "Horas": 596},
+    {"OBM": "2º CIBM - Manacapuru",         "Horas": 975},
+    {"OBM": "3º CIBM - Parintins",          "Horas": 0},
+    {"OBM": "1º PDBM - Iranduba",           "Horas": 423},
+    {"OBM": "1º PDBM - Rio Preto da Eva",   "Horas": 389},
+    {"OBM": "2º PDBM - Novo Airão",         "Horas": 224},
+    {"OBM": "2º PDBM - Humaitá",            "Horas": 491},
+    {"OBM": "3º PDBM - Presidente Figueiredo", "Horas": 639},
+    {"OBM": "1º PIBM - Tefé",               "Horas": 468},
+    {"OBM": "2º PIBM - Tabatinga",          "Horas": 154},
+]
+
+# ── MARÇO 2026 (dados do dashboard/Excel) ─────
+CBC_2026 = [
+    {"OBM": "SCI",     "Horas": 2003},
+    {"OBM": "1º BI",   "Horas": 1495},
+    {"OBM": "BBE",     "Horas": 1102},
+    {"OBM": "DAT",     "Horas": 856},
+    {"OBM": "QCG",     "Horas": 680},
+    {"OBM": "GRAPH",   "Horas": 632},
+    {"OBM": "CBC",     "Horas": 557},
+    {"OBM": "BIFMA",   "Horas": 383},
+    {"OBM": "CMCBM",   "Horas": 64},
+    {"OBM": "COBOM",   "Horas": 38},
+    {"OBM": "PGGM",    "Horas": 34},
+]
+
+# Total CBC 2026 = 7.844h conforme dashboard
+# CBI 2026 = 4.231h conforme dashboard
+# Total = 12.075h
+
+CBI_2026 = [
+    {"OBM": "CBI",                          "Horas": 0},
+    {"OBM": "1º CIBM - Itacoatiara",        "Horas": 0},
+    {"OBM": "2º CIBM - Manacapuru",         "Horas": 0},
+    {"OBM": "3º CIBM - Parintins",          "Horas": 0},
+    {"OBM": "1º PDBM - Iranduba",           "Horas": 0},
+    {"OBM": "1º PDBM - Rio Preto da Eva",   "Horas": 0},
+    {"OBM": "2º PDBM - Novo Airão",         "Horas": 0},
+    {"OBM": "2º PDBM - Humaitá",            "Horas": 0},
+    {"OBM": "3º PDBM - Presidente Figueiredo", "Horas": 0},
+    {"OBM": "1º PIBM - Tefé",               "Horas": 0},
+    {"OBM": "2º PIBM - Tabatinga",          "Horas": 0},
+]
+
+# ─────────────────────────────────────────────
+# TENTA CARREGAR DO CSV/EXCEL (dinâmico)
 # ─────────────────────────────────────────────
 URL_CSV = "https://raw.githubusercontent.com/AllanCardosoDev/seg/main/relatorio.csv"
+ARQUIVO_XLSX = "1_Relatrio_GRAFICOS_3.xlsx"
 
 @st.cache_data
 def carregar_csv():
     for enc in ["utf-8", "utf-8-sig", "latin-1"]:
         try:
-            df = pd.read_csv(
-                URL_CSV, encoding=enc,
-                header=None, sep=None, engine="python"
-            )
-            # Pula cabeçalho textual se existir
+            df = pd.read_csv(URL_CSV, encoding=enc, header=None, sep=None, engine="python")
             primeira = str(df.iloc[0, 0]).strip().lower()
             if not primeira.lstrip("-").isnumeric():
                 df = df.iloc[1:].reset_index(drop=True)
-
-            # Nomeia colunas pela estrutura real do CSV
             if df.shape[1] >= 5:
-                df.columns = ["NUM", "NOME", "GUERRA", "OBM", "HORAS"] + \
-                             [f"x{i}" for i in range(df.shape[1] - 5)]
+                df.columns = ["NUM", "NOME", "GUERRA", "OBM", "HORAS"] + [f"x{i}" for i in range(df.shape[1]-5)]
             elif df.shape[1] == 4:
                 df.columns = ["NUM", "NOME", "OBM", "HORAS"]
             elif df.shape[1] == 3:
                 df.columns = ["NOME", "OBM", "HORAS"]
-            else:
-                df.columns = [f"col_{i}" for i in range(df.shape[1])]
-
             df.dropna(how="all", inplace=True)
             df.reset_index(drop=True, inplace=True)
             return df
         except Exception:
             continue
-    st.error("Não foi possível carregar relatorio.csv")
-    st.stop()
+    return None
 
-with st.spinner("Carregando dados..."):
-    df_raw = carregar_csv()
+@st.cache_data
+def carregar_xlsx_aba(arquivo, aba):
+    try:
+        df = pd.read_excel(arquivo, sheet_name=aba, header=None)
+        df.dropna(how="all", inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        return df
+    except Exception:
+        return None
 
-col_obm  = "OBM"   if "OBM"   in df_raw.columns else df_raw.columns[-2]
-col_segs = "HORAS" if "HORAS" in df_raw.columns else df_raw.columns[-1]
+def agrupar_por_obm(df, col_obm, col_horas):
+    df[col_horas] = pd.to_numeric(df[col_horas], errors="coerce").fillna(0)
+    df = df[df[col_obm].astype(str).str.strip().ne("")]
+    df = df[df[col_obm].notna()]
+    result = (
+        df.groupby(col_obm)[col_horas]
+        .sum().reset_index()
+        .rename(columns={col_obm: "OBM", col_horas: "Horas"})
+    )
+    result["OBM"] = result["OBM"].astype(str).str.strip()
+    result = result[~result["OBM"].str.lower().isin(["nan","none","","total"])]
+    result = result[~result["OBM"].str.isnumeric()]
+    return result
 
-df_raw[col_segs] = pd.to_numeric(df_raw[col_segs], errors="coerce").fillna(0)
-df_raw = df_raw[df_raw[col_obm].astype(str).str.strip().ne("")]
-df_raw = df_raw[df_raw[col_obm].notna()]
-
-# ─────────────────────────────────────────────
-# AGRUPA POR OBM
-# ─────────────────────────────────────────────
-df_obm = (
-    df_raw.groupby(col_obm)[col_segs]
-    .sum()
-    .reset_index()
-    .rename(columns={col_obm: "OBM", col_segs: "Horas"})
-)
-df_obm["OBM"]   = df_obm["OBM"].astype(str).str.strip()
-df_obm["Horas"] = pd.to_numeric(df_obm["Horas"], errors="coerce").fillna(0)
-df_obm = df_obm[~df_obm["OBM"].str.lower().isin(["nan","none","","total"])]
-df_obm = df_obm[~df_obm["OBM"].str.isnumeric()]
-
-# ─────────────────────────────────────────────
-# SEPARA CBC / CBI
-# ─────────────────────────────────────────────
 CBC_LISTA = [
-    "1° BI","1º BI","1 BI","1°BI","1ºBI",
-    "BBE","BIFMA","COBOM","DAT",
-    "GRAPH","PGGM","QCG","QCG","SCI",
-    "CMCB","CBC","CBCM","COBM"
+    "1° BI","1º BI","1 BI","BBE","BIFMA","COBOM",
+    "DAT","GRAPH","PGGM","QCG","SCI","CMCB","CMCBM","CBC","CBCM"
 ]
 
 def is_cbc(nome):
     n = str(nome).upper().strip()
     return any(c.upper() in n for c in CBC_LISTA)
 
-mask_cbc = df_obm["OBM"].apply(is_cbc)
-df_cbc   = df_obm[mask_cbc].sort_values("Horas", ascending=False).reset_index(drop=True)
-df_cbi   = df_obm[~mask_cbc].sort_values("Horas", ascending=False).reset_index(drop=True)
+def separar_cbc_cbi(df_obm):
+    mask = df_obm["OBM"].apply(is_cbc)
+    cbc  = df_obm[mask].sort_values("Horas", ascending=False).reset_index(drop=True)
+    cbi  = df_obm[~mask].sort_values("Horas", ascending=False).reset_index(drop=True)
+    return cbc, cbi
 
-# Fallback
-if df_cbc.empty:
-    df_cbc = pd.DataFrame([
-        {"OBM": "SCI",   "Horas": 1730},
-        {"OBM": "1º BI", "Horas": 1693},
-        {"OBM": "BBE",   "Horas": 1269},
-        {"OBM": "QCG",   "Horas": 1094},
-        {"OBM": "DAT",   "Horas": 669},
-        {"OBM": "GRAPH", "Horas": 483},
-        {"OBM": "CBC",   "Horas": 469},
-        {"OBM": "BIFMA", "Horas": 339},
-        {"OBM": "PGGM",  "Horas": 263},
-        {"OBM": "COBOM", "Horas": 61},
-        {"OBM": "CMCB",  "Horas": 0},
-    ])
-if df_cbi.empty:
-    df_cbi = pd.DataFrame([
-        {"OBM": "2º CIBM - Manacapuru",       "Horas": 975},
-        {"OBM": "3º PDBM - Pres. Figueiredo", "Horas": 639},
-        {"OBM": "1º CIBM - Itacoatiara",      "Horas": 596},
-        {"OBM": "1º PIBM - Tefé",             "Horas": 468},
-        {"OBM": "2º PDBM - Humaitá",          "Horas": 491},
-        {"OBM": "1º PDBM - Iranduba",         "Horas": 423},
-        {"OBM": "1º PDBM - Rio Preto da Eva", "Horas": 389},
-        {"OBM": "2º PDBM - Novo Airão",       "Horas": 224},
-        {"OBM": "2º PIBM - Tabatinga",        "Horas": 154},
-        {"OBM": "3º CIBM - Parintins",        "Horas": 0},
-        {"OBM": "CBI",                        "Horas": 10},
-    ])
+# ─────────────────────────────────────────────
+# SIDEBAR — seleção de período
+# ─────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## 🚒 CBMAM")
+    st.markdown("### Período")
+    st.markdown("---")
+
+    periodo = st.radio(
+        "Selecione o mês de referência:",
+        options=["📅 Março 2025", "📅 Março 2026"],
+        index=1  # padrão: 2026
+    )
+
+    st.markdown("---")
+    st.markdown("**📁 Fonte**")
+    st.markdown("[github.com/AllanCardosoDev/seg](https://github.com/AllanCardosoDev/seg)")
+
+# ─────────────────────────────────────────────
+# CARREGA DADOS DO PERÍODO SELECIONADO
+# ─────────────────────────────────────────────
+if periodo == "📅 Março 2025":
+    periodo_label = "MARÇO 2025"
+
+    # Tenta carregar do CSV dinâmico
+    df_csv = carregar_csv()
+    if df_csv is not None and "OBM" in df_csv.columns and "HORAS" in df_csv.columns:
+        df_obm_raw = agrupar_por_obm(df_csv, "OBM", "HORAS")
+        df_cbc, df_cbi = separar_cbc_cbi(df_obm_raw)
+        if df_cbc.empty:
+            df_cbc = pd.DataFrame(CBC_2025)
+        if df_cbi.empty:
+            df_cbi = pd.DataFrame(CBI_2025)
+    else:
+        df_cbc = pd.DataFrame(CBC_2025)
+        df_cbi = pd.DataFrame(CBI_2025)
+
+else:
+    periodo_label = "MARÇO 2026"
+
+    # Tenta carregar da aba MILITARES MARÇO 3 do Excel
+    df_xlsx = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
+    if df_xlsx is not None and df_xlsx.shape[1] >= 4:
+        # Nomeia colunas pela estrutura real
+        if df_xlsx.shape[1] >= 5:
+            df_xlsx.columns = ["NUM","NOME","GUERRA","OBM","HORAS"] + [f"x{i}" for i in range(df_xlsx.shape[1]-5)]
+        else:
+            df_xlsx.columns = ["NUM","NOME","OBM","HORAS"] + [f"x{i}" for i in range(df_xlsx.shape[1]-4)]
+
+        # Pula linhas sem número válido na primeira coluna
+        df_xlsx = df_xlsx[pd.to_numeric(df_xlsx["NUM"], errors="coerce").notna()]
+
+        df_obm_raw = agrupar_por_obm(df_xlsx, "OBM", "HORAS")
+        df_cbc, df_cbi = separar_cbc_cbi(df_obm_raw)
+
+        if df_cbc.empty:
+            df_cbc = pd.DataFrame(CBC_2026)
+        if df_cbi.empty:
+            df_cbi = pd.DataFrame(CBI_2026)
+    else:
+        df_cbc = pd.DataFrame(CBC_2026)
+        df_cbi = pd.DataFrame(CBI_2026)
+
+# ─────────────────────────────────────────────
+# GARANTE TIPOS E ORDENA
+# ─────────────────────────────────────────────
+df_cbc["Horas"] = pd.to_numeric(df_cbc["Horas"], errors="coerce").fillna(0)
+df_cbi["Horas"] = pd.to_numeric(df_cbi["Horas"], errors="coerce").fillna(0)
+df_cbc = df_cbc.sort_values("Horas", ascending=False).reset_index(drop=True)
+df_cbi = df_cbi.sort_values("Horas", ascending=False).reset_index(drop=True)
 
 total_cbc   = int(df_cbc["Horas"].sum())
 total_cbi   = int(df_cbi["Horas"].sum())
@@ -308,31 +344,21 @@ def build_chart(df_g, titulo):
         cliponaxis=False
     ))
     fig.update_layout(
-        title=dict(
-            text=titulo,
-            x=0.5,
-            font=dict(size=13, color="#000000", family="Arial")
-        ),
+        title=dict(text=titulo, x=0.5, font=dict(size=13, color="#000000")),
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
         height=360,
         margin=dict(t=50, b=80, l=40, r=20),
-        font=dict(color="#000000", family="Arial"),
+        font=dict(color="#000000"),
         xaxis=dict(
-            showgrid=False,
-            tickangle=-30,
+            showgrid=False, tickangle=-30,
             tickfont=dict(size=9, color="#000000"),
-            showline=True,
-            linecolor="#aaaaaa",
-            linewidth=1,
+            showline=True, linecolor="#aaaaaa"
         ),
         yaxis=dict(
-            showgrid=True,
-            gridcolor="#eeeeee",
-            gridwidth=1,
+            showgrid=True, gridcolor="#eeeeee",
             tickfont=dict(color="#000000"),
-            range=[0, max_y * 1.28],
-            showline=False,
+            range=[0, max_y * 1.28]
         ),
         shapes=[dict(
             type="rect", xref="paper", yref="paper",
@@ -343,29 +369,12 @@ def build_chart(df_g, titulo):
     return fig
 
 # ─────────────────────────────────────────────
-# SIDEBAR (debug)
-# ─────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## 🚒 CBMAM")
-    st.markdown("---")
-    st.markdown(f"**Registros:** {len(df_raw)}")
-    st.markdown(f"**OBMs:** {len(df_obm)}")
-    st.markdown(f"**CBC:** {len(df_cbc)} | **CBI:** {len(df_cbi)}")
-    st.markdown("---")
-    with st.expander("🔍 OBMs no CSV"):
-        for obm in sorted(df_obm["OBM"].tolist()):
-            g = "🟡 CBC" if is_cbc(obm) else "🟢 CBI"
-            st.markdown(f"{g} — `{obm}`")
-    with st.expander("📋 Primeiras linhas"):
-        st.dataframe(df_raw.head(10))
-
-# ─────────────────────────────────────────────
 # LAYOUT PRINCIPAL
 # ─────────────────────────────────────────────
 st.markdown(
-    '<div class="header-title">'
-    'Demonstrativo de Horas de SEG Processadas para Pagamento no Mês de MARÇO 2025'
-    '</div>',
+    f'<div class="header-title">'
+    f'Demonstrativo de Horas de SEG Processadas para Pagamento no Mês de {periodo_label}'
+    f'</div>',
     unsafe_allow_html=True
 )
 
@@ -386,10 +395,9 @@ with col_t1:
         unsafe_allow_html=True
     )
     st.markdown(build_table(df_cbc, "tbl-cbc", total_cbc), unsafe_allow_html=True)
-
 with col_g1:
     st.plotly_chart(
-        build_chart(df_cbc, "Distribuição SEG - Capital"),
+        build_chart(df_cbc, f"Distribuição SEG - Capital — {periodo_label}"),
         use_container_width=True
     )
 
@@ -403,10 +411,9 @@ with col_t2:
         unsafe_allow_html=True
     )
     st.markdown(build_table(df_cbi, "tbl-cbi", total_cbi), unsafe_allow_html=True)
-
 with col_g2:
     st.plotly_chart(
-        build_chart(df_cbi, "Distribuição SEG - Interior"),
+        build_chart(df_cbi, f"Distribuição SEG - Interior — {periodo_label}"),
         use_container_width=True
     )
 
@@ -452,14 +459,46 @@ with r3:
             textfont=dict(color="#000000", size=11)
         ))
         fig_d.update_layout(
-            height=210,
-            showlegend=False,
+            height=210, showlegend=False,
             margin=dict(t=10, b=0, l=0, r=0),
             paper_bgcolor="#ffffff",
-            plot_bgcolor="#ffffff",
             font=dict(color="#000000")
         )
         st.plotly_chart(fig_d, use_container_width=True)
+
+# ── COMPARATIVO 2025 vs 2026 ──────────────────
+st.markdown("---")
+st.markdown("### 📊 Comparativo Março 2025 × Março 2026")
+
+df_comp_cbc = pd.DataFrame([
+    {"OBM": r["OBM"], "Horas": r["Horas"], "Período": "Março 2025"}
+    for r in CBC_2025
+] + [
+    {"OBM": r["OBM"], "Horas": r["Horas"], "Período": "Março 2026"}
+    for r in CBC_2026
+])
+
+fig_comp = go.Figure()
+for p, cor in [("Março 2025", "#FFC000"), ("Março 2026", "#4472C4")]:
+    d = df_comp_cbc[df_comp_cbc["Período"] == p]
+    fig_comp.add_trace(go.Bar(
+        name=p, x=d["OBM"], y=d["Horas"],
+        text=d["Horas"], textposition="outside",
+        marker_color=cor
+    ))
+
+fig_comp.update_layout(
+    barmode="group",
+    title=dict(text="CBC — Março 2025 vs Março 2026", x=0.5, font=dict(size=13, color="#000")),
+    plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+    height=380,
+    margin=dict(t=50, b=60, l=30, r=20),
+    font=dict(color="#000000"),
+    xaxis=dict(showgrid=False, tickangle=-20),
+    yaxis=dict(showgrid=True, gridcolor="#eeeeee"),
+    legend=dict(bgcolor="#ffffff", font=dict(color="#000"))
+)
+st.plotly_chart(fig_comp, use_container_width=True)
 
 # ── DOWNLOADS ─────────────────────────────────
 st.markdown("---")
@@ -467,11 +506,11 @@ c1, c2, c3 = st.columns(3)
 with c1:
     st.download_button("⬇️ CBC — CSV",
         df_cbc.to_csv(index=False).encode("utf-8"),
-        "cbc_marco2025.csv", "text/csv")
+        f"cbc_{periodo_label.lower().replace(' ','_')}.csv","text/csv")
 with c2:
     st.download_button("⬇️ CBI — CSV",
         df_cbi.to_csv(index=False).encode("utf-8"),
-        "cbi_marco2025.csv", "text/csv")
+        f"cbi_{periodo_label.lower().replace(' ','_')}.csv","text/csv")
 with c3:
     df_dl = pd.concat([
         df_cbc.assign(Grupo="CBC - Capital"),
@@ -479,12 +518,12 @@ with c3:
     ])
     st.download_button("⬇️ Completo — CSV",
         df_dl.to_csv(index=False).encode("utf-8"),
-        "cbmam_marco2025.csv", "text/csv")
+        f"cbmam_{periodo_label.lower().replace(' ','_')}.csv","text/csv")
 
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center;color:#888;font-size:0.8rem'>"
-    "CBMAM · Demonstrativo SEG · Março 2025 · relatorio.csv · Streamlit"
+    f"CBMAM · Demonstrativo SEG · {periodo_label} · Streamlit"
     "</div>",
     unsafe_allow_html=True
 )
