@@ -95,7 +95,8 @@ st.markdown("""
 # DADOS REAIS — MARÇO 2025 e MARÇO 2026 (fallback)
 # ─────────────────────────────────────────────
 
-# Estes dados serão usados APENAS se o arquivo Excel não puder ser lido.
+# Estes dados serão usados APENAS se o arquivo Excel não puder ser lido,
+# ou se o CSV de 2026 não tiver OBM para CBC/CBI.
 # Eles garantem que o dashboard sempre mostre os valores corretos.
 
 # ── MARÇO 2025 (dados das suas imagens do Excel) ────────────────────────────────
@@ -161,6 +162,7 @@ CBI_2026_FALLBACK = [
 # CARREGAMENTO DE ARQUIVOS
 # ─────────────────────────────────────────────
 ARQUIVO_XLSX = "1_Relatrio_GRAFICOS_3.xlsx" # O arquivo Excel local
+ARQUIVO_CSV_2026 = "relatoriomarco2026.csv" # O novo CSV para Março 2026
 
 @st.cache_data
 def carregar_xlsx_aba(arquivo, aba):
@@ -171,6 +173,18 @@ def carregar_xlsx_aba(arquivo, aba):
         return df
     except Exception as e:
         st.error(f"Erro ao carregar a aba '{aba}' do Excel: {e}")
+        return None
+
+@st.cache_data
+def carregar_csv_delimitado(arquivo):
+    try:
+        # Tenta ler com ponto e vírgula como delimitador
+        df = pd.read_csv(arquivo, sep=';', encoding='utf-8')
+        df.dropna(how="all", inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar o CSV '{arquivo}': {e}")
         return None
 
 # ─────────────────────────────────────────────
@@ -188,6 +202,7 @@ def agrupar_por_obm(df_militares, col_obm_idx, col_horas_idx, header_row_offset=
 
     df_process = df_militares.iloc[header_row_offset:].copy()
 
+    # Verifica se os índices das colunas estão dentro dos limites
     if col_obm_idx >= df_process.shape[1] or col_horas_idx >= df_process.shape[1]:
         st.warning(f"Índices de coluna OBM ({col_obm_idx}) ou Horas ({col_horas_idx}) fora do limite do DataFrame. Verifique a estrutura da aba do Excel.")
         return pd.DataFrame(columns=["OBM", "Horas"])
@@ -265,8 +280,9 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### ⚙️ Configurações")
-    st.info("Os dados são carregados do arquivo `1_Relatrio_GRAFICOS_3.xlsx` para ambos os meses.")
-    st.warning("O arquivo `relatoriomarco2026.csv` não será usado para os demonstrativos de CBC/CBI pois não contém a coluna OBM.")
+    st.info("Março 2025: Dados do `1_Relatrio_GRAFICOS_3.xlsx` (aba 'MILITARES MARÇO').")
+    st.info("Março 2026: Total Geral do `relatoriomarco2026.csv`. CBC/CBI do `1_Relatrio_GRAFICOS_3.xlsx` (aba 'MILITARES MARÇO 3').")
+    st.warning("O `relatoriomarco2026.csv` não tem OBM, então CBC/CBI para 2026 vêm do Excel.")
 
 
 # ─────────────────────────────────────────────
@@ -294,15 +310,23 @@ if periodo_selecionado == "Março 2025":
 
 else: # Março 2026
     periodo_label = "MARÇO 2026"
-    df_militares_2026 = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
 
-    if df_militares_2026 is not None and not df_militares_2026.empty:
-        # Estrutura da aba "MILITARES MARÇO 3": OBM na coluna 3 (índice 3), Horas na coluna 4 (índice 4), dados a partir da linha 2 (índice 2)
-        df_obm_agrupado = agrupar_por_obm(df_militares_2026, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
-        df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado)
-        total_geral_calculado = df_obm_agrupado["Horas"].sum()
+    # Tenta carregar o total geral do relatoriomarco2026.csv
+    df_csv_2026 = carregar_csv_delimitado(ARQUIVO_CSV_2026)
+    if df_csv_2026 is not None and not df_csv_2026.empty and "HORAS" in df_csv_2026.columns:
+        total_geral_calculado = pd.to_numeric(df_csv_2026["HORAS"], errors="coerce").fillna(0).sum()
     else:
-        # Fallback se o Excel não carregou ou está vazio
+        st.warning(f"Não foi possível calcular o Total Geral de Março 2026 do '{ARQUIVO_CSV_2026}'. Usando fallback.")
+        total_geral_calculado = sum(r["Horas"] for r in CBC_2026_FALLBACK) + sum(r["Horas"] for r in CBI_2026_FALLBACK)
+
+    # Para CBC/CBI de Março 2026, usa o Excel (pois o CSV não tem OBM)
+    df_militares_2026_excel = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
+    if df_militares_2026_excel is not None and not df_militares_2026_excel.empty:
+        # Estrutura da aba "MILITARES MARÇO 3": OBM na coluna 3 (índice 3), Horas na coluna 4 (índice 4), dados a partir da linha 2 (índice 2)
+        df_obm_agrupado_excel = agrupar_por_obm(df_militares_2026_excel, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+        df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado_excel)
+    else:
+        st.warning(f"Não foi possível carregar CBC/CBI de Março 2026 do '{ARQUIVO_XLSX}' (aba 'MILITARES MARÇO 3'). Usando fallback.")
         df_cbc = pd.DataFrame(CBC_2026_FALLBACK)
         df_cbi = pd.DataFrame(CBI_2026_FALLBACK)
 
@@ -316,7 +340,11 @@ df_cbi = df_cbi.sort_values("Horas", ascending=False).reset_index(drop=True)
 
 total_cbc   = int(df_cbc["Horas"].sum())
 total_cbi   = int(df_cbi["Horas"].sum())
-total_geral = int(total_geral_calculado) if total_geral_calculado > 0 else (total_cbc + total_cbi)
+# O total geral já foi calculado acima, se veio do CSV, usa ele. Senão, soma CBC+CBI.
+if total_geral_calculado == 0: # Se o CSV não deu total, usa a soma do Excel/fallback
+    total_geral = total_cbc + total_cbi
+else:
+    total_geral = int(total_geral_calculado)
 
 
 # ─────────────────────────────────────────────
@@ -502,11 +530,11 @@ if df_mil_2025_comp is not None and not df_mil_2025_comp.empty:
     df_obm_2025_comp = agrupar_por_obm(df_mil_2025_comp, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
     df_cbc_2025_comp, _ = separar_cbc_cbi(df_obm_2025_comp)
 
-# Tenta carregar do Excel para Março 2026
-df_mil_2026_comp = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
-if df_mil_2026_comp is not None and not df_mil_2026_comp.empty:
-    df_obm_2026_comp = agrupar_por_obm(df_mil_2026_comp, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
-    df_cbc_2026_comp, _ = separar_cbc_cbi(df_obm_2026_comp)
+# Tenta carregar do Excel para Março 2026 (para o comparativo CBC)
+df_mil_2026_comp_excel = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
+if df_mil_2026_comp_excel is not None and not df_mil_2026_comp_excel.empty:
+    df_obm_2026_comp_excel = agrupar_por_obm(df_mil_2026_comp_excel, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+    df_cbc_2026_comp, _ = separar_cbc_cbi(df_obm_2026_comp_excel)
 
 
 df_comp_cbc = pd.concat([
