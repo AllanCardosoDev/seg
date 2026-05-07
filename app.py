@@ -95,8 +95,8 @@ st.markdown("""
 # DADOS REAIS — MARÇO 2025 e MARÇO 2026 (fallback)
 # ─────────────────────────────────────────────
 
-# Estes dados serão usados APENAS se o arquivo Excel/CSV não puder ser lido ou não tiver OBM.
-# Eles garantem que o dashboard sempre mostre os valores corretos para CBC/CBI.
+# Estes dados serão usados APENAS se o arquivo Excel não puder ser lido.
+# Eles garantem que o dashboard sempre mostre os valores corretos.
 
 # ── MARÇO 2025 (dados das suas imagens do Excel) ────────────────────────────────
 CBC_2025_FALLBACK = [
@@ -161,7 +161,6 @@ CBI_2026_FALLBACK = [
 # CARREGAMENTO DE ARQUIVOS
 # ─────────────────────────────────────────────
 ARQUIVO_XLSX = "1_Relatrio_GRAFICOS_3.xlsx" # O arquivo Excel local
-ARQUIVO_CSV_2026 = "relatoriomarco2026.csv" # O novo CSV para Março 2026
 
 @st.cache_data
 def carregar_xlsx_aba(arquivo, aba):
@@ -172,18 +171,6 @@ def carregar_xlsx_aba(arquivo, aba):
         return df
     except Exception as e:
         st.error(f"Erro ao carregar a aba '{aba}' do Excel: {e}")
-        return None
-
-@st.cache_data
-def carregar_csv_delimitado(arquivo, delimitador=';'):
-    try:
-        df = pd.read_csv(arquivo, encoding="utf-8", sep=delimitador, header=0) # header=0 para pegar a primeira linha como cabeçalho
-        df.columns = df.columns.str.strip() # Limpa espaços dos nomes das colunas
-        df.dropna(how="all", inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        return df
-    except Exception as e:
-        st.error(f"Erro ao carregar o CSV '{arquivo}': {e}")
         return None
 
 # ─────────────────────────────────────────────
@@ -229,19 +216,37 @@ def agrupar_por_obm(df_militares, col_obm_idx, col_horas_idx, header_row_offset=
 
 def is_cbc(obm_name):
     obm_name_lower = str(obm_name).lower()
-    # Padrões para identificar OBMs do Interior
-    padroes_cbi = ["cibm", "pdbm", "pibm", "cbi", "itacoatiara", "manacapuru", "parintins",
-                   "iranduba", "rio preto da eva", "novo airão", "humaitá", "presidente figueiredo",
-                   "tefé", "tabatinga", "coari", "eirunepé", "lábrea", "borba", "maués", "nova olinda do norte"]
-    return not any(p in obm_name_lower for p in padroes_cbi)
+    # Lista de OBMs do interior (CIBM, PDBM, PIBM, etc.)
+    interior_keywords = ["cibm", "pdbm", "pibm", "cbi", "itacoatiara", "manacapuru", "parintins",
+                         "iranduba", "rio preto da eva", "novo airão", "humaitá",
+                         "presidente figueiredo", "tefé", "tabatinga", "coari", "eirunepé",
+                         "lábrea", "manicoré", "novo aripuanã", "são gabriel da cachoeira",
+                         "benjamin constant", "borba", "carauari", "codajás", "fonte boa",
+                         "jutaí", "manaus", "nova olinda do norte", "santa isabel do rio negro",
+                         "são paulo de olivença", "urucurituba", "barreirinha", "boca do acre",
+                         "canutama", "guajará", "juruá", "novo airão", "paunini", "tapauá",
+                         "uruacar", "boa vista do ramos", "careiro", "careiro da várzea",
+                         "envira", "japurá", "juruá", "manaus", "maraã", "nhamundá",
+                         "santo antônio do içá", "são sebastião do uatumã", "silves",
+                         "tonantins", "uarini", "barcelos", "beruri", "boa vista do ramos",
+                         "caapiranga", "canutama", "carauari", "coari", "codajás", "eirunepé",
+                         "envira", "fonte boa", "guajará", "humaitá", "ipixuna", "iranduba",
+                         "ituá", "japurá", "juruá", "jutaí", "lábrea", "manacapuru", "manaus",
+                         "manicoré", "maraã", "maués", "novo airão", "novo aripuanã",
+                         "nova olinda do norte", "parintins", "pauini", "presidente figueiredo",
+                         "rio preto da eva", "santa isabel do rio negro", "santo antônio do içá",
+                         "são gabriel da cachoeira", "são paulo de olivença", "são sebastião do uatumã",
+                         "silves", "tabatinga", "tapauá", "tefé", "tonantins", "uarini", "uruacar",
+                         "uruçará", "vila rica"] # Adicione mais conforme necessário
 
-def separar_cbc_cbi(df_obm_agrupado):
-    if df_obm_agrupado.empty:
-        return pd.DataFrame(columns=["OBM", "Horas"]), pd.DataFrame(columns=["OBM", "Horas"])
+    for keyword in interior_keywords:
+        if keyword in obm_name_lower:
+            return False
+    return True
 
-    df_obm_agrupado["is_cbc"] = df_obm_agrupado["OBM"].apply(is_cbc)
-    df_cbc = df_obm_agrupado[df_obm_agrupado["is_cbc"]].drop(columns=["is_cbc"])
-    df_cbi = df_obm_agrupado[~df_obm_agrupado["is_cbc"]].drop(columns=["is_cbc"])
+def separar_cbc_cbi(df_agrupado):
+    df_cbc = df_agrupado[df_agrupado["OBM"].apply(is_cbc)].copy()
+    df_cbi = df_agrupado[~df_agrupado["OBM"].apply(is_cbc)].copy()
     return df_cbc, df_cbi
 
 # ─────────────────────────────────────────────
@@ -249,29 +254,29 @@ def separar_cbc_cbi(df_obm_agrupado):
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🚒 CBMAM")
-    st.markdown("### Configurações")
+    st.markdown("### Demonstrativo de Horas SEG")
     st.markdown("---")
 
     periodo_selecionado = st.radio(
         "Selecione o Período:",
-        ["📅 Março 2026", "📅 Março 2025"],
-        index=0 # Padrão: Março 2026
+        ("Março 2026", "Março 2025"),
+        index=0 # Padrão para Março 2026
     )
 
     st.markdown("---")
-    st.markdown("### ℹ️ Informações de Carregamento")
-    st.info("Para Março 2025, o sistema tenta ler a aba 'MILITARES MARÇO' do Excel.")
-    st.info("Para Março 2026, o sistema tenta ler o arquivo 'relatoriomarco2026.csv'.")
-    st.warning("Se o arquivo 'relatoriomarco2026.csv' não tiver a coluna OBM, as seções de CBC/CBI usarão dados de fallback.")
+    st.markdown("### ⚙️ Configurações")
+    st.info("Os dados são carregados do arquivo `1_Relatrio_GRAFICOS_3.xlsx` para ambos os meses.")
+    st.warning("O arquivo `relatoriomarco2026.csv` não será usado para os demonstrativos de CBC/CBI pois não contém a coluna OBM.")
+
 
 # ─────────────────────────────────────────────
-# CARREGAMENTO E PROCESSAMENTO DE DADOS
+# CARREGAMENTO E PROCESSAMENTO DOS DADOS
 # ─────────────────────────────────────────────
-df_cbc = pd.DataFrame(columns=["OBM", "Horas"])
-df_cbi = pd.DataFrame(columns=["OBM", "Horas"])
-total_geral_csv_ou_excel = 0 # Para o total geral do CSV de 2026
+df_cbc = pd.DataFrame()
+df_cbi = pd.DataFrame()
+total_geral_calculado = 0 # Para somar o total de horas dos dados carregados
 
-if periodo_selecionado == "📅 Março 2025":
+if periodo_selecionado == "Março 2025":
     periodo_label = "MARÇO 2025"
     df_militares_2025 = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO")
 
@@ -279,6 +284,7 @@ if periodo_selecionado == "📅 Março 2025":
         # Estrutura da aba "MILITARES MARÇO": OBM na coluna 3 (índice 3), Horas na coluna 4 (índice 4), dados a partir da linha 2 (índice 2)
         df_obm_agrupado = agrupar_por_obm(df_militares_2025, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
         df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado)
+        total_geral_calculado = df_obm_agrupado["Horas"].sum()
 
     # Fallback se não carregou ou está vazio
     if df_cbc.empty:
@@ -288,27 +294,15 @@ if periodo_selecionado == "📅 Março 2025":
 
 else: # Março 2026
     periodo_label = "MARÇO 2026"
-    df_militares_2026_csv = carregar_csv_delimitado(ARQUIVO_CSV_2026)
+    df_militares_2026 = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
 
-    if df_militares_2026_csv is not None and not df_militares_2026_csv.empty:
-        # Verifica se o CSV tem a coluna OBM
-        if "OBM" in df_militares_2026_csv.columns and "HORAS" in df_militares_2026_csv.columns:
-            # Se tiver OBM, agrupa e separa normalmente
-            df_obm_agrupado = agrupar_por_obm(df_militares_2026_csv, col_obm_idx=df_militares_2026_csv.columns.get_loc("OBM"), col_horas_idx=df_militares_2026_csv.columns.get_loc("HORAS"), header_row_offset=0)
-            df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado)
-            total_geral_csv_ou_excel = df_obm_agrupado["Horas"].sum()
-        elif "HORAS" in df_militares_2026_csv.columns:
-            # Se não tiver OBM, calcula o total geral e usa fallback para CBC/CBI
-            total_geral_csv_ou_excel = df_militares_2026_csv["HORAS"].sum()
-            st.warning("O arquivo 'relatoriomarco2026.csv' não contém a coluna 'OBM'. As seções de CBC/CBI usarão dados de fallback.")
-            df_cbc = pd.DataFrame(CBC_2026_FALLBACK)
-            df_cbi = pd.DataFrame(CBI_2026_FALLBACK)
-        else:
-            st.error("O arquivo 'relatoriomarco2026.csv' não contém a coluna 'HORAS'. Não foi possível calcular o total.")
-            df_cbc = pd.DataFrame(CBC_2026_FALLBACK)
-            df_cbi = pd.DataFrame(CBI_2026_FALLBACK)
+    if df_militares_2026 is not None and not df_militares_2026.empty:
+        # Estrutura da aba "MILITARES MARÇO 3": OBM na coluna 3 (índice 3), Horas na coluna 4 (índice 4), dados a partir da linha 2 (índice 2)
+        df_obm_agrupado = agrupar_por_obm(df_militares_2026, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+        df_cbc, df_cbi = separar_cbc_cbi(df_obm_agrupado)
+        total_geral_calculado = df_obm_agrupado["Horas"].sum()
     else:
-        # Fallback se o CSV não carregou ou está vazio
+        # Fallback se o Excel não carregou ou está vazio
         df_cbc = pd.DataFrame(CBC_2026_FALLBACK)
         df_cbi = pd.DataFrame(CBI_2026_FALLBACK)
 
@@ -322,7 +316,7 @@ df_cbi = df_cbi.sort_values("Horas", ascending=False).reset_index(drop=True)
 
 total_cbc   = int(df_cbc["Horas"].sum())
 total_cbi   = int(df_cbi["Horas"].sum())
-total_geral = int(total_geral_csv_ou_excel) if total_geral_csv_ou_excel > 0 else (total_cbc + total_cbi)
+total_geral = int(total_geral_calculado) if total_geral_calculado > 0 else (total_cbc + total_cbi)
 
 
 # ─────────────────────────────────────────────
@@ -485,7 +479,7 @@ with r3:
             textinfo="percent+label",
             textfont=dict(color="#000000", size=11)
         ))
-fig_d.update_layout(
+        fig_d.update_layout(
             height=210, showlegend=False,
             margin=dict(t=10, b=0, l=0, r=0),
             paper_bgcolor="#ffffff",
@@ -498,7 +492,7 @@ st.markdown("---")
 st.markdown("### 📊 Comparativo Março 2025 × Março 2026")
 
 # Para o comparativo, vamos carregar os dados de cada mês novamente
-# para garantir que o comparativo reflita os dados do Excel/CSV, não apenas fallbacks.
+# para garantir que o comparativo reflita os dados do Excel, não apenas fallbacks.
 df_cbc_2025_comp = pd.DataFrame(CBC_2025_FALLBACK) # Inicia com fallback
 df_cbc_2026_comp = pd.DataFrame(CBC_2026_FALLBACK) # Inicia com fallback
 
@@ -508,14 +502,11 @@ if df_mil_2025_comp is not None and not df_mil_2025_comp.empty:
     df_obm_2025_comp = agrupar_por_obm(df_mil_2025_comp, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
     df_cbc_2025_comp, _ = separar_cbc_cbi(df_obm_2025_comp)
 
-# Tenta carregar do CSV para Março 2026 (se tiver OBM)
-df_mil_2026_comp_csv = carregar_csv_delimitado(ARQUIVO_CSV_2026)
-if df_mil_2026_comp_csv is not None and not df_mil_2026_comp_csv.empty:
-    if "OBM" in df_mil_2026_comp_csv.columns and "HORAS" in df_mil_2026_comp_csv.columns:
-        df_obm_2026_comp = agrupar_por_obm(df_mil_2026_comp_csv, col_obm_idx=df_mil_2026_comp_csv.columns.get_loc("OBM"), col_horas_idx=df_mil_2026_comp_csv.columns.get_loc("HORAS"), header_row_offset=0)
-        df_cbc_2026_comp, _ = separar_cbc_cbi(df_obm_2026_comp)
-    else:
-        st.warning("O CSV de Março 2026 não tem OBM para o comparativo. Usando fallback para 2026.")
+# Tenta carregar do Excel para Março 2026
+df_mil_2026_comp = carregar_xlsx_aba(ARQUIVO_XLSX, "MILITARES MARÇO 3")
+if df_mil_2026_comp is not None and not df_mil_2026_comp.empty:
+    df_obm_2026_comp = agrupar_por_obm(df_mil_2026_comp, col_obm_idx=3, col_horas_idx=4, header_row_offset=2)
+    df_cbc_2026_comp, _ = separar_cbc_cbi(df_obm_2026_comp)
 
 
 df_comp_cbc = pd.concat([
